@@ -1,46 +1,40 @@
 import axios from 'axios';
 import { useAuth } from '../store/auth';
 
-const BASE = import.meta.env.VITE_API_URL || '/api';
+export const BASE = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: BASE,
-  withCredentials: true,
+  withCredentials: true,   // sends the httpOnly refresh cookie
   timeout: 15_000,
 });
 
-// ── Attach access token to every request ──────────────────────────
+// ── Attach access token ───────────────────────────────────────────
 api.interceptors.request.use((cfg) => {
   const token = useAuth.getState().accessToken;
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });
 
-// ── Silent refresh on 401 TOKEN_EXPIRED ──────────────────────────
+// ── Auto-refresh on 401 TOKEN_EXPIRED ────────────────────────────
 let refreshing = false;
 let queue = [];
-
-const flush = (err, token) => {
-  queue.forEach(p => err ? p.reject(err) : p.resolve(token));
-  queue = [];
-};
+const flush = (err, token) => { queue.forEach(p => err ? p.reject(err) : p.resolve(token)); queue = []; };
 
 api.interceptors.response.use(
   r => r,
-  async err => {
-    const orig = err.config;
-    const code = err.response?.data?.code;
+  async (err) => {
+    const orig   = err.config;
     const status = err.response?.status;
+    const code   = err.response?.data?.code;
 
-    if ((status === 401 && code === 'TOKEN_EXPIRED') && !orig._retry) {
+    if (status === 401 && code === 'TOKEN_EXPIRED' && !orig._retry) {
       if (refreshing) {
         return new Promise((resolve, reject) => queue.push({ resolve, reject }))
           .then(token => { orig.headers.Authorization = `Bearer ${token}`; return api(orig); });
       }
-
       orig._retry = true;
-      refreshing = true;
-
+      refreshing  = true;
       try {
         const { data } = await axios.post(`${BASE}/auth/refresh`, {}, { withCredentials: true });
         useAuth.getState().setToken(data.accessToken);
@@ -56,18 +50,18 @@ api.interceptors.response.use(
         refreshing = false;
       }
     }
-
     return Promise.reject(err);
   }
 );
 
-// ── Silent token rehydration (called once on app boot) ────────────
+// ── Called once on app boot to restore session from cookie ────────
 export const rehydrateToken = async () => {
   try {
     const { data } = await axios.post(`${BASE}/auth/refresh`, {}, { withCredentials: true });
     useAuth.getState().setToken(data.accessToken);
     return true;
   } catch {
+    // Cookie expired or missing — clear any stale localStorage state
     useAuth.getState().logout();
     return false;
   }
