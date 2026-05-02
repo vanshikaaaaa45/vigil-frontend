@@ -143,12 +143,13 @@ export default function Stream() {
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
     const socket = io(socketUrl, {
-      transports: ['websocket', 'polling'],
-      withCredentials: true,
-      auth: {
-        token: accessToken,
-      },
+      transports:         ['polling', 'websocket'],  // polling first — required for Railway
+      upgrade:            true,                       // upgrade to websocket after connect
+      withCredentials:    true,
+      reconnectionDelay:  1000,
+      reconnectionAttempts: 5,
     });
+
     socket.on('connect', () => {
       socket.emit('auth', accessToken);
     });

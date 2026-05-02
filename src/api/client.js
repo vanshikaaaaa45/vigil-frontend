@@ -1,25 +1,32 @@
 import axios from 'axios';
 import { useAuth } from '../store/auth';
 
+// ── Base URL ──────────────────────────────────────────────────────
+// In dev: Vite proxy rewrites /api → localhost:5001
+// In prod: direct Railway URL from env var
 export const BASE = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
-  baseURL: BASE,
-  withCredentials: true,   // sends the httpOnly refresh cookie
-  timeout: 15_000,
+  baseURL:          BASE,
+  withCredentials:  true,   // MUST be true — sends the httpOnly refresh cookie
+  timeout:          20_000, // Railway cold starts can be slow
 });
 
-// ── Attach access token ───────────────────────────────────────────
+// ── Request: attach access token ──────────────────────────────────
 api.interceptors.request.use((cfg) => {
   const token = useAuth.getState().accessToken;
   if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });
 
-// ── Auto-refresh on 401 TOKEN_EXPIRED ────────────────────────────
+// ── Response: silent token refresh on 401 ────────────────────────
 let refreshing = false;
-let queue = [];
-const flush = (err, token) => { queue.forEach(p => err ? p.reject(err) : p.resolve(token)); queue = []; };
+let queue      = [];
+
+const flush = (err, token) => {
+  queue.forEach(p => err ? p.reject(err) : p.resolve(token));
+  queue = [];
+};
 
 api.interceptors.response.use(
   r => r,
@@ -28,18 +35,30 @@ api.interceptors.response.use(
     const status = err.response?.status;
     const code   = err.response?.data?.code;
 
-    if (status === 401 && !orig._retry) {
+    // Only intercept TOKEN_EXPIRED — not generic 401s (wrong API key etc)
+    if (status === 401 && code === 'TOKEN_EXPIRED' && !orig._retry) {
       if (refreshing) {
+        // Queue concurrent requests while refresh is in progress
         return new Promise((resolve, reject) => queue.push({ resolve, reject }))
-          .then(token => { orig.headers.Authorization = `Bearer ${token}`; return api(orig); });
+          .then(token => {
+            orig.headers.Authorization = `Bearer ${token}`;
+            return api(orig);
+          });
       }
-      orig._retry = true;
-      refreshing  = true;
+
+      orig._retry  = true;
+      refreshing   = true;
+
       try {
-        const { data } = await axios.post(`${BASE}/auth/refresh`, {}, { withCredentials: true });
-        useAuth.getState().setToken(data.accessToken);
-        flush(null, data.accessToken);
-        orig.headers.Authorization = `Bearer ${data.accessToken}`;
+        const { data } = await axios.post(
+          `${BASE}/auth/refresh`,
+          {},
+          { withCredentials: true }   // send the httpOnly cookie
+        );
+        const newToken = data.accessToken;
+        useAuth.getState().setToken(newToken);
+        flush(null, newToken);
+        orig.headers.Authorization = `Bearer ${newToken}`;
         return api(orig);
       } catch (e) {
         flush(e, null);
@@ -50,18 +69,25 @@ api.interceptors.response.use(
         refreshing = false;
       }
     }
+
     return Promise.reject(err);
   }
 );
 
-// ── Called once on app boot to restore session from cookie ────────
+// ── Boot-time token rehydration ───────────────────────────────────
+// Called once in App.jsx on every page load.
+// Reads the httpOnly cookie (which survives refresh) → gets a fresh access token.
 export const rehydrateToken = async () => {
   try {
-    const { data } = await axios.post(`${BASE}/auth/refresh`, {}, { withCredentials: true });
+    const { data } = await axios.post(
+      `${BASE}/auth/refresh`,
+      {},
+      { withCredentials: true }
+    );
     useAuth.getState().setToken(data.accessToken);
     return true;
   } catch {
-    // Cookie expired or missing — clear any stale localStorage state
+    // Cookie expired / missing → log out cleanly
     useAuth.getState().logout();
     return false;
   }
