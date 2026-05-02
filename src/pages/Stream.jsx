@@ -141,13 +141,18 @@ export default function Stream() {
 
   // ── WebSocket ─────────────────────────────────────────────────
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
+    const isProd = !socketUrl.includes('localhost');
     const socket = io(socketUrl, {
-      transports:         ['polling', 'websocket'],  // polling first — required for Railway
-      upgrade:            true,                       // upgrade to websocket after connect
-      withCredentials:    true,
-      reconnectionDelay:  1000,
-      reconnectionAttempts: 5,
+      transports:          isProd ? ['polling'] : ['polling', 'websocket'],
+      upgrade:             !isProd,
+      withCredentials:     true,
+      reconnectionDelay:   2000,
+      reconnectionAttempts: 10,
+      timeout:             20_000,
+    });
+
+    socket.on('connect_error', (err) => {
+      console.debug('[vigil] socket reconnecting...', err.message);
     });
 
     socket.on('connect', () => {
