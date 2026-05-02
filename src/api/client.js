@@ -28,7 +28,7 @@ api.interceptors.response.use(
     const status = err.response?.status;
     const code   = err.response?.data?.code;
 
-    if (status === 401 && code === 'TOKEN_EXPIRED' && !orig._retry) {
+    if (status === 401 && !orig._retry) {
       if (refreshing) {
         return new Promise((resolve, reject) => queue.push({ resolve, reject }))
           .then(token => { orig.headers.Authorization = `Bearer ${token}`; return api(orig); });
