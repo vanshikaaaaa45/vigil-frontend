@@ -142,8 +142,13 @@ export default function Stream() {
   // ── WebSocket ─────────────────────────────────────────────────
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
-    const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
-
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      auth: {
+        token: accessToken,
+      },
+    });
     socket.on('connect', () => {
       socket.emit('auth', accessToken);
     });
