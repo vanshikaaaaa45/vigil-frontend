@@ -141,6 +141,7 @@ export default function Stream() {
 
   // ── WebSocket ─────────────────────────────────────────────────
   useEffect(() => {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
     const isProd = !socketUrl.includes('localhost');
     const socket = io(socketUrl, {
       transports:          isProd ? ['polling'] : ['polling', 'websocket'],
