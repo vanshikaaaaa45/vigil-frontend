@@ -106,21 +106,26 @@ export default function Stream() {
   const { accessToken } = useAuth();
   const qc = useQueryClient();
 
-  // ── State ─────────────────────────────────────────────────────
-  const [liveLogs, setLiveLogs]   = useState([]);  // from WebSocket
-  const [paused, setPaused]       = useState(false);
-  const [filter, setFilter]       = useState({ service: '', level: '', search: '' });
-  const [page, setPage]           = useState(0);
-  const [showRule, setShowRule]   = useState(false);
-  const [detail, setDetail]       = useState(null);
+  const [liveLogs, setLiveLogs] = useState([]);
+  const [paused, setPaused]     = useState(false);
+  const [filter, setFilter]     = useState({ service: '', level: '', search: '' });
+  const [page, setPage]         = useState(0);
+  const [showRule, setShowRule] = useState(false);
+  const [detail, setDetail]     = useState(null);
   const streamRef = useRef(null);
 
   // ── Queries ───────────────────────────────────────────────────
-  const { data: stats }         = useQuery({ queryKey: ['log-stats'],   queryFn: () => api.get('/logs/stats').then(r => r.data.stats), refetchInterval: 30_000 });
-  const { data: services = [] } = useQuery({ queryKey: ['log-svc'],    queryFn: () => api.get('/logs/services').then(r => r.data.services) });
-  const { data: rules = [] }    = useQuery({ queryKey: ['log-rules'],  queryFn: () => api.get('/logs/rules').then(r => r.data.rules) });
+  const { data: stats }         = useQuery({ queryKey: ['log-stats'],      queryFn: () => api.get('/logs/stats').then(r => r.data.stats), refetchInterval: 30_000 });
+  const { data: services = [] } = useQuery({ queryKey: ['log-svc'],        queryFn: () => api.get('/logs/services').then(r => r.data.services) });
+  const { data: rules = [] }    = useQuery({ queryKey: ['log-rules'],      queryFn: () => api.get('/logs/rules').then(r => r.data.rules) });
 
-  // Historic logs — ALWAYS fetched, even when live logs are present
+  // ── Phase 2 — Alert history ───────────────────────────────────
+  const { data: alertHistory = [] } = useQuery({
+    queryKey: ['alert-history'],
+    queryFn:  () => api.get('/logs/alert-history').then(r => r.data.history),
+    refetchInterval: 30_000,
+  });
+
   const { data: historicLogs = [], isFetching } = useQuery({
     queryKey: ['logs', filter, page],
     queryFn: () => api.get('/logs', {
@@ -132,11 +137,9 @@ export default function Stream() {
         offset:  page * PAGE,
       },
     }).then(r => r.data.logs),
-    // Keep previous data while fetching next page
     placeholderData: prev => prev,
   });
 
-  // When filter changes, reset page and clear live logs
   useEffect(() => { setPage(0); setLiveLogs([]); }, [filter]);
 
   // ── WebSocket ─────────────────────────────────────────────────
@@ -144,25 +147,18 @@ export default function Stream() {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5001';
     const isProd = !socketUrl.includes('localhost');
     const socket = io(socketUrl, {
-      transports:          isProd ? ['polling'] : ['polling', 'websocket'],
-      upgrade:             !isProd,
-      withCredentials:     true,
-      reconnectionDelay:   2000,
+      transports:           isProd ? ['polling'] : ['polling', 'websocket'],
+      upgrade:              !isProd,
+      withCredentials:      true,
+      reconnectionDelay:    2000,
       reconnectionAttempts: 10,
-      timeout:             20_000,
+      timeout:              20_000,
     });
 
-    socket.on('connect_error', (err) => {
-      console.debug('[vigil] socket reconnecting...', err.message);
-    });
-
-    socket.on('connect', () => {
-      socket.emit('auth', accessToken);
-    });
-
+    socket.on('connect',       () => socket.emit('auth', accessToken));
+    socket.on('connect_error', (err) => console.debug('[vigil] socket reconnecting...', err.message));
     socket.on('log:new', (log) => {
       if (paused) return;
-      // Filter live logs to match current filter
       if (filter.service && log.service !== filter.service) return;
       if (filter.level   && log.level   !== filter.level)   return;
       if (filter.search  && !log.message.toLowerCase().includes(filter.search.toLowerCase())) return;
@@ -172,9 +168,6 @@ export default function Stream() {
     return () => socket.disconnect();
   }, [accessToken, paused, filter]);
 
-  // ── Display logic ─────────────────────────────────────────────
-  // Live logs appear at TOP (newest first), then historic logs below
-  // When paused or searching, only show historic
   const showLive  = liveLogs.length > 0 && !paused && page === 0 && !filter.search;
   const displayed = showLive
     ? [...liveLogs, ...historicLogs.filter(h => !liveLogs.find(l => l.id === h.id))]
@@ -190,23 +183,18 @@ export default function Stream() {
     onSuccess:  ()     => qc.invalidateQueries({ queryKey: ['log-rules'] }),
   });
 
-  // ── Scroll to top when new live logs arrive ───────────────────
   useEffect(() => {
-    if (showLive && !paused && streamRef.current) {
-      streamRef.current.scrollTop = 0;
-    }
+    if (showLive && !paused && streamRef.current) streamRef.current.scrollTop = 0;
   }, [liveLogs.length]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Topbar */}
       <div className="topbar">
         <div>
           <div className="topbar-title">Stream</div>
           <div className="topbar-sub">Live log aggregation · click any row for details</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {/* Live indicator */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontFamily: 'DM Mono', color: paused ? 'var(--amber)' : 'var(--green)' }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: paused ? 'none' : 'pulse 2s infinite' }} />
             {paused ? 'PAUSED' : 'LIVE'}
@@ -222,9 +210,9 @@ export default function Stream() {
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 18 }}>
           {[
-            ['Logs (24h)',   Number(stats?.last_24h  || 0).toLocaleString(), 'total ingested',       'var(--text)'],
-            ['Errors (1h)',  stats?.errors_1h  || 0,                          `${stats?.errors_24h || 0} in 24h`, +stats?.errors_1h > 0 ? 'var(--red)' : 'var(--green)'],
-            ['Alert rules',  rules.length,                                    `${rules.filter(r => r.last_triggered).length} fired ever`, 'var(--text)'],
+            ['Logs (24h)',  Number(stats?.last_24h || 0).toLocaleString(), 'total ingested',                                    'var(--text)'],
+            ['Errors (1h)', stats?.errors_1h || 0,                         `${stats?.errors_24h || 0} in 24h`,                  +stats?.errors_1h > 0 ? 'var(--red)' : 'var(--green)'],
+            ['Alert rules', rules.length,                                  `${alertHistory.length} fires recorded`,              'var(--text)'],
           ].map(([label, val, sub, color]) => (
             <div key={label} className="stat">
               <div className="stat-label">{label}</div>
@@ -252,18 +240,14 @@ export default function Stream() {
 
         {/* Log stream */}
         <div className="card" style={{ marginBottom: 16 }}>
-          {/* Stream header */}
           <div style={{ padding: '9px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg3)', flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--muted)' }}>
-                {displayed.length} entries
-              </span>
+              <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--muted)' }}>{displayed.length} entries</span>
               {isFetching && <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>loading…</span>}
             </div>
             <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>click any row for details</span>
           </div>
 
-          {/* Log rows */}
           <div ref={streamRef} style={{ maxHeight: 400, overflowY: 'auto' }}>
             {displayed.length === 0 && !isFetching ? (
               <div style={{ padding: 52, textAlign: 'center' }}>
@@ -276,8 +260,7 @@ export default function Stream() {
                   <div style={{ color: 'var(--muted)' }}># Terminal</div>
                   <div>curl -X POST <span style={{ color: 'var(--teal)' }}>/api/logs/ingest</span> \</div>
                   <div>&nbsp;&nbsp;-H <span style={{ color: 'var(--amber)' }}>"X-API-Key: vgl_live_..."</span> \</div>
-                  <div>&nbsp;&nbsp;-H <span style={{ color: 'var(--amber)' }}>"Content-Type: application/json"</span> \</div>
-                  <div>&nbsp;&nbsp;-d <span style={{ color: 'var(--amber)'}}>'{"{"}"service":"api","level":"info","message":"hello"{"}"}'</span></div>
+                  <div>&nbsp;&nbsp;-d <span style={{ color: 'var(--amber)' }}>'{"{"}"service":"api","level":"info","message":"hello"{"}"}'</span></div>
                 </div>
               </div>
             ) : displayed.map((log, i) => (
@@ -285,8 +268,8 @@ export default function Stream() {
                 key={log.id || i}
                 onClick={() => setDetail(log)}
                 style={{ display: 'flex', gap: 10, padding: '7px 18px', borderBottom: '1px solid rgba(30,30,46,.8)', fontSize: 12, alignItems: 'flex-start', cursor: 'pointer', fontFamily: 'DM Mono', transition: 'background .08s' }}
-                onMouseOver={e  => e.currentTarget.style.background = 'var(--bg3)'}
-                onMouseOut={e   => e.currentTarget.style.background = ''}
+                onMouseOver={e => e.currentTarget.style.background = 'var(--bg3)'}
+                onMouseOut={e  => e.currentTarget.style.background = ''}
               >
                 <span style={{ color: 'var(--muted)', flexShrink: 0, width: 62, fontSize: 11 }}>
                   {new Date(log.timestamp).toLocaleTimeString()}
@@ -309,15 +292,12 @@ export default function Stream() {
             ))}
           </div>
 
-          {/* Pagination */}
           <div style={{ padding: '9px 18px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg3)' }}>
             <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--muted)' }}>
               Page {page + 1} · {historicLogs.length} loaded
             </span>
             <div style={{ display: 'flex', gap: 8 }}>
-              {page > 0 && (
-                <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p - 1)}>← Newer</button>
-              )}
+              {page > 0 && <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p - 1)}>← Newer</button>}
               {historicLogs.length === PAGE && (
                 <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p + 1)} disabled={isFetching}>
                   {isFetching ? 'Loading…' : 'Older →'}
@@ -328,7 +308,7 @@ export default function Stream() {
         </div>
 
         {/* Alert rules */}
-        <div className="card">
+        <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-head">
             <span className="card-title">Alert rules</span>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowRule(true)}>+ Add rule</button>
@@ -339,7 +319,7 @@ export default function Stream() {
               <div className="empty-h">No alert rules</div>
               <div className="empty-p">
                 Create rules that fire when error counts spike.<br />
-                Get emailed and Slacked the moment something breaks.
+                Get emailed the moment something breaks.
               </div>
               <button className="btn btn-primary" onClick={() => setShowRule(true)}>+ Create first rule</button>
             </div>
@@ -369,6 +349,47 @@ export default function Stream() {
                   </div>
                 );
               })}
+            </>
+          )}
+        </div>
+
+        {/* ── Alert history (Phase 2) ────────────────────────────── */}
+        <div className="card">
+          <div className="card-head">
+            <span className="card-title">Alert history</span>
+            <span className="card-meta">{alertHistory.length} fires recorded</span>
+          </div>
+          {alertHistory.length === 0 ? (
+            <div style={{ padding: '24px 18px', textAlign: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>
+              No alerts fired yet — create a rule above and trigger it by sending errors.
+            </div>
+          ) : (
+            <>
+              <div className="thead" style={{ gridTemplateColumns: '2fr 80px 80px 80px 140px' }}>
+                <span>Rule</span><span>Level</span><span>Count</span><span>Notified</span><span>When</span>
+              </div>
+              {alertHistory.map(h => (
+                <div key={h.id} className="trow" style={{ gridTemplateColumns: '2fr 80px 80px 80px 140px' }}>
+                  <div>
+                    <div className="tname">{h.rule_name}</div>
+                    <div className="tsub">threshold: {h.threshold} · window: {h.window_seconds / 60}min</div>
+                  </div>
+                  <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: LEVEL_COLOR[h.level] || 'var(--muted)', fontWeight: 600 }}>
+                    {h.level?.toUpperCase() || 'ANY'}
+                  </span>
+                  <div style={{ fontFamily: 'DM Mono', fontSize: 13, fontWeight: 700, color: 'var(--red)' }}>
+                    {h.count}
+                  </div>
+                  <div style={{ fontFamily: 'DM Mono', fontSize: 11 }}>
+                    {h.notified
+                      ? <span style={{ color: 'var(--green)' }}>📧 sent</span>
+                      : <span style={{ color: 'var(--muted)' }}>—</span>}
+                  </div>
+                  <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--muted)' }}>
+                    {new Date(h.fired_at).toLocaleString()}
+                  </div>
+                </div>
+              ))}
             </>
           )}
         </div>
