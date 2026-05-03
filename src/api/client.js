@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { useAuth } from '../store/auth';
-import { useTeam } from '../store/team';
 
 export const BASE = import.meta.env.VITE_API_URL || '/api';
 
@@ -10,12 +9,10 @@ const api = axios.create({
   timeout:         20_000,
 });
 
-// Attach token AND team ID to every request
+// Attach token from store (now persisted in localStorage)
 api.interceptors.request.use((cfg) => {
-  const token  = useAuth.getState().accessToken;
-  const teamId = useTeam.getState().activeTeamId;
-  if (token)  cfg.headers.Authorization = `Bearer ${token}`;
-  if (teamId) cfg.headers['X-Team-Id']  = teamId;
+  const token = useAuth.getState().accessToken;
+  if (token) cfg.headers.Authorization = `Bearer ${token}`;
   return cfg;
 });
 
@@ -57,21 +54,23 @@ api.interceptors.response.use(
   }
 );
 
-// Restore token — tries cookie first, falls back to stored token
+// Try to refresh token from cookie — if fails, use stored token
 export const rehydrateToken = async () => {
   try {
     const { data } = await axios.post(`${BASE}/auth/refresh`, {}, { withCredentials: true });
     useAuth.getState().setToken(data.accessToken);
     return true;
   } catch {
+    // Cookie refresh failed — check if we have a stored token that still works
     const stored = useAuth.getState().accessToken;
     if (stored) {
       try {
+        // Verify stored token still works
         await axios.get(`${BASE}/auth/me`, {
           headers: { Authorization: `Bearer ${stored}` },
           withCredentials: true,
         });
-        return true;
+        return true; // stored token still valid
       } catch {
         useAuth.getState().logout();
         return false;
