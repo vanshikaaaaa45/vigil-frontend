@@ -42,38 +42,42 @@ const Spinner = () => (
   </div>
 );
 
-export default function App() {
+// ── TeamLoader: runs inside QueryClientProvider so api calls work ──
+// Fetches the user's team role after auth is confirmed
+function TeamLoader() {
   const { isAuthenticated } = useAuth();
   const { activeTeamId, setActive } = useTeam();
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Fetch teams and set the active role
+    // Runs every time the component mounts (page load / navigation)
+    api.get('/teams').then(({ data }) => {
+      const teams = data.teams || [];
+      if (teams.length === 0) return;
+      const active = teams.find(t => t.id === activeTeamId) || teams[0];
+      setActive(active.id, active.role);
+    }).catch(() => {
+      // Silently fail — don't crash the app if teams fetch fails
+    });
+  }, [isAuthenticated]);
+
+  return null; // renders nothing — just a side effect
+}
+
+export default function App() {
+  const { isAuthenticated } = useAuth();
   const [booted, setBooted] = useState(false);
 
   useEffect(() => {
     (async () => {
       if (isAuthenticated) {
-        // Step 1: restore access token from cookie
-        const ok = await rehydrateToken();
-
-        if (ok) {
-          // Step 2: fetch user's teams and set their role in the active team
-          // This ensures viewer/member/admin restrictions apply on every page load
-          try {
-            const { data } = await api.get('/teams');
-            const teams = data.teams || [];
-
-            if (teams.length > 0) {
-              // Use the previously active team if it still exists,
-              // otherwise default to the first team
-              const activeTeam = teams.find(t => t.id === activeTeamId) || teams[0];
-              setActive(activeTeam.id, activeTeam.role);
-            }
-          } catch {
-            // If teams fetch fails, keep existing role — don't crash the app
-          }
-        }
+        await rehydrateToken();
       }
       setBooted(true);
     })();
-  }, []); // runs once on mount — every page load/refresh
+  }, []);
 
   if (!booted) return <Spinner />;
 
@@ -89,20 +93,19 @@ export default function App() {
 
   return (
     <QueryClientProvider client={qc}>
+      {/* TeamLoader sits inside QueryClientProvider and fetches role after auth */}
+      <TeamLoader />
       <BrowserRouter>
         <Routes>
-          {/* ── Public ─────────────────────────────────────────── */}
           <Route path="/"                element={<Landing />} />
           <Route path="/verify-email"    element={<Verify />} />
           <Route path="/forgot-password" element={<Forgot />} />
           <Route path="/reset-password"  element={<Reset />} />
           <Route path="/status/:slug"    element={<StatusPage />} />
 
-          {/* ── Auth only ──────────────────────────────────────── */}
           <Route path="/login"  element={<Public><Login /></Public>} />
           <Route path="/signup" element={<Public><Signup /></Public>} />
 
-          {/* ── Protected ──────────────────────────────────────── */}
           <Route path="/onboarding" element={<Guard><Onboarding /></Guard>} />
           <Route element={<Guard><Layout /></Guard>}>
             <Route path="/watch"    element={<Watch />} />
