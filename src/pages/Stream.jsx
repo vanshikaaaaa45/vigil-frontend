@@ -27,12 +27,10 @@ function LogDetail({ log, onClose }) {
             <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
           </div>
         </div>
-
         <div style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 7, padding: '12px 14px', marginBottom: 12 }}>
           <div className="label" style={{ marginBottom: 6 }}>Message</div>
           <div style={{ fontSize: 13, lineHeight: 1.8, color: 'var(--text)', wordBreak: 'break-word' }}>{log.message}</div>
         </div>
-
         <div style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 7, padding: '12px 14px', marginBottom: 12 }}>
           <div className="label" style={{ marginBottom: 8 }}>Metadata</div>
           {Object.keys(meta).length === 0 ? (
@@ -46,7 +44,6 @@ function LogDetail({ log, onClose }) {
             </div>
           ))}
         </div>
-
         <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard.writeText(JSON.stringify(log, null, 2))}>
           📋 Copy as JSON
         </button>
@@ -55,9 +52,15 @@ function LogDetail({ log, onClose }) {
   );
 }
 
-// ── Add rule modal ────────────────────────────────────────────────
+// ── Add rule modal (Phase 3 — Slack, Discord, cooldown added) ─────
 function AddRuleModal({ onClose, onCreate }) {
-  const [f, setF] = useState({ name: '', service: '', level: 'error', threshold: 5, window_seconds: 300 });
+  const [f, setF] = useState({
+    name: '', service: '', level: 'error',
+    threshold: 5, window_seconds: 300,
+    notify_slack: '',     // Phase 3
+    notify_discord: '',   // Phase 3
+    cooldown_minutes: 15, // Phase 3
+  });
   const [loading, setLoading] = useState(false);
   const submit = async () => {
     if (!f.name) return;
@@ -69,31 +72,78 @@ function AddRuleModal({ onClose, onCreate }) {
     <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
         <div className="modal-title">New alert rule</div>
-        <div className="field"><label className="label">Rule name</label><input className="input" placeholder="High error rate" value={f.name} onChange={e => setF(p => ({ ...p, name: e.target.value }))} /></div>
+        <div className="field">
+          <label className="label">Rule name</label>
+          <input className="input" placeholder="High error rate" value={f.name} onChange={e => setF(p => ({ ...p, name: e.target.value }))} />
+        </div>
         <div className="row2">
-          <div className="field"><label className="label">Service (optional)</label><input className="input" placeholder="api-server" value={f.service} onChange={e => setF(p => ({ ...p, service: e.target.value }))} /></div>
-          <div className="field"><label className="label">Level</label>
+          <div className="field">
+            <label className="label">Service (optional)</label>
+            <input className="input" placeholder="api-server" value={f.service} onChange={e => setF(p => ({ ...p, service: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label className="label">Level</label>
             <select className="input" value={f.level} onChange={e => setF(p => ({ ...p, level: e.target.value }))}>
-              <option value="error">ERROR</option><option value="warn">WARN</option><option value="info">INFO</option>
+              <option value="error">ERROR</option>
+              <option value="warn">WARN</option>
+              <option value="info">INFO</option>
             </select>
           </div>
         </div>
         <div className="row2">
-          <div className="field"><label className="label">Threshold (events)</label><input className="input" type="number" min="1" value={f.threshold} onChange={e => setF(p => ({ ...p, threshold: +e.target.value }))} /></div>
-          <div className="field"><label className="label">Time window</label>
+          <div className="field">
+            <label className="label">Threshold (events)</label>
+            <input className="input" type="number" min="1" value={f.threshold} onChange={e => setF(p => ({ ...p, threshold: +e.target.value }))} />
+          </div>
+          <div className="field">
+            <label className="label">Time window</label>
             <select className="input" value={f.window_seconds} onChange={e => setF(p => ({ ...p, window_seconds: +e.target.value }))}>
-              <option value={60}>1 minute</option><option value={300}>5 minutes</option>
-              <option value={600}>10 minutes</option><option value={3600}>1 hour</option>
+              <option value={60}>1 minute</option>
+              <option value={300}>5 minutes</option>
+              <option value={600}>10 minutes</option>
+              <option value={3600}>1 hour</option>
             </select>
           </div>
         </div>
-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 6, padding: '9px 12px', marginBottom: 16, fontFamily: 'DM Mono', fontSize: 11, color: 'var(--muted)' }}>
-          Alert fires when <strong style={{ color: 'var(--text)' }}>{f.level.toUpperCase()}</strong> count &gt; <strong style={{ color: 'var(--text)' }}>{f.threshold}</strong> in <strong style={{ color: 'var(--text)' }}>{f.window_seconds / 60} min</strong>
-          {f.service && <> from <strong style={{ color: 'var(--teal)' }}>{f.service}</strong></>}
+
+        {/* Phase 3 — Slack */}
+        <div className="field">
+          <label className="label">
+            Slack webhook
+            <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--muted)', fontSize: 10, marginLeft: 6 }}>optional</span>
+          </label>
+          <input className="input" placeholder="https://hooks.slack.com/services/..." value={f.notify_slack} onChange={e => setF(p => ({ ...p, notify_slack: e.target.value }))} />
         </div>
+
+        {/* Phase 3 — Discord */}
+        <div className="field">
+          <label className="label">
+            Discord webhook
+            <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--muted)', fontSize: 10, marginLeft: 6 }}>optional</span>
+          </label>
+          <input className="input" placeholder="https://discord.com/api/webhooks/..." value={f.notify_discord} onChange={e => setF(p => ({ ...p, notify_discord: e.target.value }))} />
+        </div>
+
+        {/* Phase 3 — Cooldown */}
+        <div className="field">
+          <label className="label">
+            Cooldown (minutes)
+            <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--muted)', fontSize: 10, marginLeft: 6 }}>won't fire again until this expires</span>
+          </label>
+          <input className="input" type="number" min="1" max="1440" value={f.cooldown_minutes} onChange={e => setF(p => ({ ...p, cooldown_minutes: +e.target.value }))} />
+        </div>
+
+        <div style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 6, padding: '9px 12px', marginBottom: 16, fontFamily: 'DM Mono', fontSize: 11, color: 'var(--muted)' }}>
+          Fires when <strong style={{ color: 'var(--text)' }}>{f.level.toUpperCase()}</strong> &gt; <strong style={{ color: 'var(--text)' }}>{f.threshold}</strong> in <strong style={{ color: 'var(--text)' }}>{f.window_seconds / 60}min</strong>
+          {f.service && <> from <strong style={{ color: 'var(--teal)' }}>{f.service}</strong></>}
+          {' · '}cooldown: <strong style={{ color: 'var(--text)' }}>{f.cooldown_minutes}min</strong>
+        </div>
+
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={!f.name || loading}>{loading ? 'Creating…' : 'Create rule'}</button>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={!f.name || loading}>
+            {loading ? 'Creating…' : 'Create rule'}
+          </button>
         </div>
       </div>
     </div>
@@ -115,11 +165,10 @@ export default function Stream() {
   const streamRef = useRef(null);
 
   // ── Queries ───────────────────────────────────────────────────
-  const { data: stats }         = useQuery({ queryKey: ['log-stats'],      queryFn: () => api.get('/logs/stats').then(r => r.data.stats), refetchInterval: 30_000 });
-  const { data: services = [] } = useQuery({ queryKey: ['log-svc'],        queryFn: () => api.get('/logs/services').then(r => r.data.services) });
-  const { data: rules = [] }    = useQuery({ queryKey: ['log-rules'],      queryFn: () => api.get('/logs/rules').then(r => r.data.rules) });
+  const { data: stats }         = useQuery({ queryKey: ['log-stats'], queryFn: () => api.get('/logs/stats').then(r => r.data.stats), refetchInterval: 30_000 });
+  const { data: services = [] } = useQuery({ queryKey: ['log-svc'],   queryFn: () => api.get('/logs/services').then(r => r.data.services) });
+  const { data: rules = [] }    = useQuery({ queryKey: ['log-rules'], queryFn: () => api.get('/logs/rules').then(r => r.data.rules) });
 
-  // ── Phase 2 — Alert history ───────────────────────────────────
   const { data: alertHistory = [] } = useQuery({
     queryKey: ['alert-history'],
     queryFn:  () => api.get('/logs/alert-history').then(r => r.data.history),
@@ -210,9 +259,9 @@ export default function Stream() {
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 18 }}>
           {[
-            ['Logs (24h)',  Number(stats?.last_24h || 0).toLocaleString(), 'total ingested',                                    'var(--text)'],
-            ['Errors (1h)', stats?.errors_1h || 0,                         `${stats?.errors_24h || 0} in 24h`,                  +stats?.errors_1h > 0 ? 'var(--red)' : 'var(--green)'],
-            ['Alert rules', rules.length,                                  `${alertHistory.length} fires recorded`,              'var(--text)'],
+            ['Logs (24h)',   Number(stats?.last_24h || 0).toLocaleString(), 'total ingested',        'var(--text)'],
+            ['Errors (1h)',  stats?.errors_1h || 0, `${stats?.errors_24h || 0} in 24h`,              +stats?.errors_1h > 0 ? 'var(--red)' : 'var(--green)'],
+            ['Alert rules',  rules.length,           `${alertHistory.length} fires recorded`,        'var(--text)'],
           ].map(([label, val, sub, color]) => (
             <div key={label} className="stat">
               <div className="stat-label">{label}</div>
@@ -240,7 +289,7 @@ export default function Stream() {
 
         {/* Log stream */}
         <div className="card" style={{ marginBottom: 16 }}>
-          <div style={{ padding: '9px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg3)', flexShrink: 0 }}>
+          <div style={{ padding: '9px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg3)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--muted)' }}>{displayed.length} entries</span>
               {isFetching && <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>loading…</span>}
@@ -319,7 +368,7 @@ export default function Stream() {
               <div className="empty-h">No alert rules</div>
               <div className="empty-p">
                 Create rules that fire when error counts spike.<br />
-                Get emailed the moment something breaks.
+                Get emailed and Slacked the moment something breaks.
               </div>
               <button className="btn btn-primary" onClick={() => setShowRule(true)}>+ Create first rule</button>
             </div>
@@ -335,7 +384,9 @@ export default function Stream() {
                     <div>
                       <div className="tname">{r.name}</div>
                       <div className="tsub">
-                        {r.level?.toUpperCase() || 'ANY'} · {r.service || 'all services'} · {r.window_seconds / 60}min window
+                        {r.level?.toUpperCase() || 'ANY'} · {r.service || 'all services'} · {r.window_seconds / 60}min
+                        {r.notify_slack   && ' · 📢 Slack'}
+                        {r.notify_discord && ' · 🎮 Discord'}
                       </div>
                     </div>
                     <span className={`pill ${recentlyFired ? 'pill-red' : 'pill-green'}`}>
@@ -353,7 +404,7 @@ export default function Stream() {
           )}
         </div>
 
-        {/* ── Alert history (Phase 2) ────────────────────────────── */}
+        {/* Alert history */}
         <div className="card">
           <div className="card-head">
             <span className="card-title">Alert history</span>
