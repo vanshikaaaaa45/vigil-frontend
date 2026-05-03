@@ -2,19 +2,37 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useAuth } from '../store/auth';
+import { useTeam } from '../store/team';
 
 export default function Login() {
   const [f, setF] = useState({ email: '', password: '' });
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuth();
+  const { activeTeamId, setActive } = useTeam();
   const nav = useNavigate();
 
   const submit = async (e) => {
     e.preventDefault(); setErr(''); setLoading(true);
     try {
       const { data } = await api.post('/auth/login', f);
+
+      // Step 1: store user + token (token now persisted in localStorage)
       setAuth(data.user, data.accessToken);
+
+      // Step 2: immediately fetch teams to get real role
+      // Token is now in memory so this call will succeed
+      try {
+        const teamsRes = await api.get('/teams');
+        const teams = teamsRes.data.teams || [];
+        if (teams.length > 0) {
+          const active = teams.find(t => t.id === activeTeamId) || teams[0];
+          setActive(active.id, active.role);
+        }
+      } catch {
+        // Teams fetch failed — not fatal, role stays null (viewer-safe default)
+      }
+
       nav('/watch');
     } catch (e) { setErr(e.response?.data?.error || 'Login failed'); }
     finally { setLoading(false); }
