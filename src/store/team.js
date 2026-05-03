@@ -5,25 +5,24 @@ export const useTeam = create(
   persist(
     (set) => ({
       activeTeamId: null,
-      activeRole:   null,    // null = not loaded yet, always fetch from API on boot
-      teams:        [],
+      activeRole:   null,
 
-      setTeams:  (teams)        => set({ teams }),
       setActive: (teamId, role) => set({ activeTeamId: teamId, activeRole: role }),
-      clear:     ()             => set({ activeTeamId: null, activeRole: null, teams: [] }),
+      clear:     ()             => set({ activeTeamId: null, activeRole: null }),
     }),
     {
       name: 'vigil-team',
-      // Only persist the activeTeamId — NEVER persist role
-      // Role must always come from the API so it can't be spoofed
+      // NEVER persist role — always fetch fresh from API
       partialize: s => ({ activeTeamId: s.activeTeamId }),
     }
   )
 );
 
-// Returns true if user can create/edit/delete
-// null role = still loading, default to false (safer — viewer sees read-only briefly)
+// true = admin or member (can create/edit/delete)
+// false = viewer OR role not loaded yet
+// This means on first load, buttons are hidden until role is confirmed
 export const useCanEdit = () => {
   const role = useTeam(s => s.activeRole);
+  if (!role) return false; // not loaded yet = safe default = no buttons
   return role === 'admin' || role === 'member';
 };
