@@ -53,9 +53,7 @@ export default function App() {
     // httpOnly cookie. This is what keeps users logged in across refreshes.
     // The cookie survives browser restarts; the in-memory token does not.
     (async () => {
-      if (isAuthenticated) {
-        await rehydrateToken(); // get new token from cookie
-      }
+      await rehydrateToken();
       setBooted(true);
     })();
   }, []); // runs exactly once on mount
