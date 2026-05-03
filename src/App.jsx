@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from './store/auth';
@@ -42,42 +42,37 @@ const Spinner = () => (
   </div>
 );
 
-// ── TeamLoader: runs inside QueryClientProvider so api calls work ──
-// Fetches the user's team role after auth is confirmed
-function TeamLoader() {
-  const { isAuthenticated } = useAuth();
-  const { activeTeamId, setActive } = useTeam();
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    // Fetch teams and set the active role
-    // Runs every time the component mounts (page load / navigation)
-    api.get('/teams').then(({ data }) => {
-      const teams = data.teams || [];
-      if (teams.length === 0) return;
-      const active = teams.find(t => t.id === activeTeamId) || teams[0];
-      setActive(active.id, active.role);
-    }).catch(() => {
-      // Silently fail — don't crash the app if teams fetch fails
-    });
-  }, [isAuthenticated]);
-
-  return null; // renders nothing — just a side effect
-}
-
 export default function App() {
   const { isAuthenticated } = useAuth();
+  const { activeTeamId, setActive } = useTeam();
   const [booted, setBooted] = useState(false);
+  const teamLoaded = useRef(false);
 
   useEffect(() => {
     (async () => {
       if (isAuthenticated) {
-        await rehydrateToken();
+        // Step 1: get a fresh access token from the cookie
+        const ok = await rehydrateToken();
+
+        if (ok) {
+          // Step 2: NOW the in-memory token exists — fetch teams
+          // api interceptor will attach the token automatically
+          try {
+            const { data } = await api.get('/teams');
+            const teams = data.teams || [];
+            if (teams.length > 0) {
+              const active = teams.find(t => t.id === activeTeamId) || teams[0];
+              setActive(active.id, active.role);
+              teamLoaded.current = true;
+            }
+          } catch (e) {
+            console.warn('[vigil] teams fetch failed:', e.message);
+          }
+        }
       }
       setBooted(true);
     })();
-  }, []);
+  }, []); // runs once on every page load
 
   if (!booted) return <Spinner />;
 
@@ -93,8 +88,6 @@ export default function App() {
 
   return (
     <QueryClientProvider client={qc}>
-      {/* TeamLoader sits inside QueryClientProvider and fetches role after auth */}
-      <TeamLoader />
       <BrowserRouter>
         <Routes>
           <Route path="/"                element={<Landing />} />
