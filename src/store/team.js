@@ -5,21 +5,24 @@ export const useTeam = create(
   persist(
     (set) => ({
       activeTeamId: null,
-      activeRole:   'admin',   // 'admin' | 'member' | 'viewer'
+      activeRole:   null,    // null = not loaded yet, always fetch from API on boot
       teams:        [],
 
       setTeams:  (teams)        => set({ teams }),
       setActive: (teamId, role) => set({ activeTeamId: teamId, activeRole: role }),
-      clear:     ()             => set({ activeTeamId: null, activeRole: 'admin', teams: [] }),
+      clear:     ()             => set({ activeTeamId: null, activeRole: null, teams: [] }),
     }),
     {
       name: 'vigil-team',
-      partialize: s => ({ activeTeamId: s.activeTeamId, activeRole: s.activeRole }),
+      // Only persist the activeTeamId — NEVER persist role
+      // Role must always come from the API so it can't be spoofed
+      partialize: s => ({ activeTeamId: s.activeTeamId }),
     }
   )
 );
 
-// Returns true for admin + member, false for viewer
+// Returns true if user can create/edit/delete
+// null role = still loading, default to false (safer — viewer sees read-only briefly)
 export const useCanEdit = () => {
   const role = useTeam(s => s.activeRole);
   return role === 'admin' || role === 'member';
