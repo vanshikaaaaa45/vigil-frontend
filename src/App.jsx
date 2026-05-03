@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuth } from './store/auth';
@@ -46,33 +46,39 @@ export default function App() {
   const { isAuthenticated } = useAuth();
   const { activeTeamId, setActive } = useTeam();
   const [booted, setBooted] = useState(false);
-  const teamLoaded = useRef(false);
 
   useEffect(() => {
     (async () => {
       if (isAuthenticated) {
-        // Step 1: get a fresh access token from the cookie
+        console.log('[boot] user is authenticated, rehydrating token...');
         const ok = await rehydrateToken();
+        console.log('[boot] rehydrateToken result:', ok);
 
         if (ok) {
-          // Step 2: NOW the in-memory token exists — fetch teams
-          // api interceptor will attach the token automatically
           try {
+            console.log('[boot] fetching teams...');
             const { data } = await api.get('/teams');
+            console.log('[boot] teams response:', data);
             const teams = data.teams || [];
             if (teams.length > 0) {
               const active = teams.find(t => t.id === activeTeamId) || teams[0];
+              console.log('[boot] setting active team:', active.id, 'role:', active.role);
               setActive(active.id, active.role);
-              teamLoaded.current = true;
+            } else {
+              console.warn('[boot] no teams returned');
             }
           } catch (e) {
-            console.warn('[vigil] teams fetch failed:', e.message);
+            console.error('[boot] teams fetch error:', e.response?.status, e.message);
           }
+        } else {
+          console.warn('[boot] rehydrateToken failed — no valid cookie');
         }
+      } else {
+        console.log('[boot] user not authenticated, skipping team load');
       }
       setBooted(true);
     })();
-  }, []); // runs once on every page load
+  }, []);
 
   if (!booted) return <Spinner />;
 
