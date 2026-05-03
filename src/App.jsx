@@ -20,7 +20,7 @@ import Stream     from './pages/Stream';
 import Relay      from './pages/Relay';
 import Keys       from './pages/Keys';
 import Settings   from './pages/Settings';
-import Team from './pages/Team.jsx';
+import Team       from './pages/Team.jsx';
 
 const qc = new QueryClient({
   defaultOptions: {
