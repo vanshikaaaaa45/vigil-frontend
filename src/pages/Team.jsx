@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
+import { useTeam } from '../store/team';
 
 const ROLE_COLOR = {
   admin:  { bg: 'rgba(249,115,22,.1)',  color: 'var(--accent)' },
@@ -118,6 +119,7 @@ function CreateTeamModal({ onClose }) {
 
 export default function Team() {
   const qc = useQueryClient();
+  const { setActive } = useTeam();
   const [activeTeamId, setActiveTeamId] = useState(null);
   const [showInvite,   setShowInvite]   = useState(false);
   const [showCreate,   setShowCreate]   = useState(false);
@@ -174,7 +176,7 @@ export default function Team() {
               {teams.map(t => (
                 <div
                   key={t.id}
-                  onClick={() => setActiveTeamId(t.id)}
+                  onClick={() => { setActiveTeamId(t.id); setActive(t.id, t.role); }}
                   style={{
                     padding: '12px 14px',
                     borderBottom: '1px solid var(--border)',

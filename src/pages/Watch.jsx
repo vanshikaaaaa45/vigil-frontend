@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
+import { Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
 import api from '../api/client';
+import { useCanEdit } from '../store/team';
 
 function UptimeBars({ monitorId }) {
   const { data } = useQuery({
@@ -13,7 +14,8 @@ function UptimeBars({ monitorId }) {
   return (
     <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end' }}>
       {bars.map((b, i) => (
-        <div key={i} title={b ? `${b.is_up ? 'UP' : 'DOWN'} · ${b.response_ms || 0}ms` : 'No data'} style={{ width: 5, height: 16, borderRadius: 2, flexShrink: 0, cursor: 'default', background: b == null ? 'var(--border2)' : b.is_up ? 'var(--green)' : 'var(--red)', transition: 'opacity .1s', opacity: 0.85 }}
+        <div key={i} title={b ? `${b.is_up ? 'UP' : 'DOWN'} · ${b.response_ms || 0}ms` : 'No data'}
+          style={{ width: 5, height: 16, borderRadius: 2, flexShrink: 0, cursor: 'default', background: b == null ? 'var(--border2)' : b.is_up ? 'var(--green)' : 'var(--red)', opacity: 0.85 }}
           onMouseOver={e => e.target.style.opacity = 1} onMouseOut={e => e.target.style.opacity = 0.85} />
       ))}
     </div>
@@ -27,10 +29,10 @@ function ChartModal({ monitorId, monitorName, onClose }) {
   });
 
   const chartData = (data || []).map(row => ({
-    hour: new Date(row.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    avg: Number(row.avg_ms) || 0,
-    max: Number(row.max_ms) || 0,
-    min: Number(row.min_ms) || 0,
+    hour:   new Date(row.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    avg:    Number(row.avg_ms) || 0,
+    max:    Number(row.max_ms) || 0,
+    min:    Number(row.min_ms) || 0,
     uptime: Math.round((Number(row.up_count) / (Number(row.total) || 1)) * 100),
   }));
 
@@ -39,9 +41,7 @@ function ChartModal({ monitorId, monitorName, onClose }) {
     return (
       <div style={{ background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 8, padding: '10px 14px', fontFamily: 'DM Mono', fontSize: 11 }}>
         <div style={{ color: 'var(--text2)', marginBottom: 6 }}>{label}</div>
-        {payload.map(p => (
-          <div key={p.name} style={{ color: p.color, marginBottom: 2 }}>{p.name}: {p.value}ms</div>
-        ))}
+        {payload.map(p => <div key={p.name} style={{ color: p.color, marginBottom: 2 }}>{p.name}: {p.value}ms</div>)}
       </div>
     );
   };
@@ -57,9 +57,9 @@ function ChartModal({ monitorId, monitorName, onClose }) {
           <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
         </div>
         {isLoading ? (
-          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>Loading chart data…</div>
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>Loading…</div>
         ) : chartData.length === 0 ? (
-          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>No data yet — check back after a few runs</div>
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>No data yet</div>
         ) : (
           <>
             <ResponsiveContainer width="100%" height={220}>
@@ -149,18 +149,20 @@ function AddMonitorModal({ onClose, onSave }) {
 }
 
 export default function Watch() {
-  const qc = useQueryClient();
+  const qc      = useQueryClient();
+  const canEdit = useCanEdit();
   const [showAdd, setShowAdd]   = useState(false);
   const [chart, setChart]       = useState(null);
   const [checking, setChecking] = useState(null);
 
-  const { data: monitors = [], isLoading } = useQuery({ queryKey: ['monitors'], queryFn: () => api.get('/monitors').then(r => r.data.monitors), refetchInterval: 30_000 });
-  const { data: stats }   = useQuery({ queryKey: ['watch-stats'],  queryFn: () => api.get('/monitors/stats').then(r => r.data), refetchInterval: 30_000 });
-  const { data: incidents = [] } = useQuery({ queryKey: ['incidents'], queryFn: () => api.get('/monitors/incidents').then(r => r.data.incidents) });
+  const { data: monitors = [], isLoading } = useQuery({ queryKey: ['monitors'],    queryFn: () => api.get('/monitors').then(r => r.data.monitors), refetchInterval: 30_000 });
+  const { data: stats }                    = useQuery({ queryKey: ['watch-stats'], queryFn: () => api.get('/monitors/stats').then(r => r.data), refetchInterval: 30_000 });
+  const { data: incidents = [] }           = useQuery({ queryKey: ['incidents'],   queryFn: () => api.get('/monitors/incidents').then(r => r.data.incidents) });
 
-  const create = useMutation({ mutationFn: d => api.post('/monitors', d), onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
-  const del    = useMutation({ mutationFn: id => api.delete(`/monitors/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
+  const create = useMutation({ mutationFn: d => api.post('/monitors', d),            onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
+  const del    = useMutation({ mutationFn: id => api.delete(`/monitors/${id}`),       onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
   const toggle = useMutation({ mutationFn: ({ id, status }) => api.patch(`/monitors/${id}`, { status }), onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
+
   const checkNow = async (id) => {
     setChecking(id);
     try { await api.post(`/monitors/${id}/check`); setTimeout(() => { qc.invalidateQueries({ queryKey: ['monitors'] }); setChecking(null); }, 6000); }
@@ -178,18 +180,19 @@ export default function Watch() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => qc.invalidateQueries()}>↺ Refresh</button>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>+ New monitor</button>
+          {canEdit && (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>+ New monitor</button>
+          )}
         </div>
       </div>
 
       <div className="page-scroll">
-        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
           {[
-            ['Monitors', stats?.monitors?.total || 0, `${stats?.monitors?.up || 0} up · ${stats?.monitors?.down || 0} down`, stats?.monitors?.down > 0 ? 'var(--red)' : 'var(--green)'],
-            ['Avg response', stats?.avg_response_ms ? `${stats.avg_response_ms}ms` : '—', 'across active monitors', 'var(--text)'],
-            ['Open incidents', stats?.incidents?.open || 0, `${stats?.incidents?.total || 0} in 30 days`, stats?.incidents?.open > 0 ? 'var(--red)' : 'var(--green)'],
-            ['Plan', 'Free', `${monitors.length}/3 monitors`, 'var(--accent)'],
+            ['Monitors',      stats?.monitors?.total || 0,                        `${stats?.monitors?.up || 0} up · ${stats?.monitors?.down || 0} down`, stats?.monitors?.down > 0 ? 'var(--red)' : 'var(--green)'],
+            ['Avg response',  stats?.avg_response_ms ? `${stats.avg_response_ms}ms` : '—', 'across active monitors', 'var(--text)'],
+            ['Open incidents',stats?.incidents?.open || 0,                        `${stats?.incidents?.total || 0} in 30 days`, stats?.incidents?.open > 0 ? 'var(--red)' : 'var(--green)'],
+            ['Plan',          'Free',                                              `${monitors.length}/3 monitors`, 'var(--accent)'],
           ].map(([label, val, sub, color]) => (
             <div key={label} className="stat">
               <div className="stat-label">{label}</div>
@@ -199,7 +202,6 @@ export default function Watch() {
           ))}
         </div>
 
-        {/* Monitors */}
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-head">
             <span className="card-title">Monitors</span>
@@ -211,16 +213,16 @@ export default function Watch() {
             <div className="empty">
               <div className="empty-icon">◉</div>
               <div className="empty-h">No monitors yet</div>
-              <div className="empty-p">Add your first endpoint. VIGIL checks it every minute<br />and alerts you the moment it goes down.</div>
-              <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add first monitor</button>
+              <div className="empty-p">Add your first endpoint. VIGIL checks it every minute.</div>
+              {canEdit && <button className="btn btn-primary" onClick={() => setShowAdd(true)}>+ Add first monitor</button>}
             </div>
           ) : (
             <>
-              <div className="thead" style={{ gridTemplateColumns: '2fr 100px 90px 160px 80px 170px' }}>
+              <div className="thead" style={{ gridTemplateColumns: '2fr 100px 90px 160px 80px 180px' }}>
                 <span>Endpoint</span><span>Status</span><span>Response</span><span>Uptime (30 checks)</span><span>Checked</span><span>Actions</span>
               </div>
               {monitors.map(m => (
-                <div key={m.id} className="trow" style={{ gridTemplateColumns: '2fr 100px 90px 160px 80px 170px', opacity: m.status === 'paused' ? 0.5 : 1 }}>
+                <div key={m.id} className="trow" style={{ gridTemplateColumns: '2fr 100px 90px 160px 80px 180px', opacity: m.status === 'paused' ? 0.5 : 1 }}>
                   <div>
                     <div className="tname" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       {m.name}
@@ -233,24 +235,33 @@ export default function Watch() {
                       <span className="dot" />{m.last_status?.toUpperCase() || 'PENDING'}
                     </span>
                   </div>
-                  <div style={{ fontFamily: 'DM Mono', fontSize: 12, color: !m.last_response_ms ? 'var(--muted)' : m.last_response_ms < 500 ? 'var(--green)' : m.last_response_ms < 2000 ? 'var(--amber)' : 'var(--red)', fontWeight: 600 }}>
+                  <div style={{ fontFamily: 'DM Mono', fontSize: 12, fontWeight: 600, color: !m.last_response_ms ? 'var(--muted)' : m.last_response_ms < 500 ? 'var(--green)' : m.last_response_ms < 2000 ? 'var(--amber)' : 'var(--red)' }}>
                     {m.last_response_ms ? `${m.last_response_ms}ms` : '—'}
                   </div>
                   <UptimeBars monitorId={m.id} />
                   <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--muted)' }}>
                     {m.last_checked_at ? new Date(m.last_checked_at).toLocaleTimeString() : 'Never'}
                   </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button className="btn btn-ghost btn-sm" title="View response time chart" onClick={() => setChart({ id: m.id, name: m.name })} style={{ padding: '4px 7px' }}>
+
+                  {/* Actions — chart always visible, edit actions only for canEdit */}
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <button className="btn btn-ghost btn-sm" title="Response time chart" onClick={() => setChart({ id: m.id, name: m.name })} style={{ padding: '4px 7px' }}>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 12l3-4 3 2 3-5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </button>
-                    <button className="btn btn-ghost btn-sm" title="Check now" onClick={() => checkNow(m.id)} disabled={checking === m.id} style={{ padding: '4px 7px', minWidth: 30 }}>
-                      {checking === m.id ? <span style={{ fontSize: 10 }}>…</span> : <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M13 8A5 5 0 1 1 8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M13 3v5h-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                    </button>
-                    <button className="btn btn-ghost btn-sm" title={m.status === 'paused' ? 'Resume' : 'Pause'} onClick={() => toggle.mutate({ id: m.id, status: m.status === 'paused' ? 'active' : 'paused' })} style={{ padding: '4px 7px' }}>
-                      {m.status === 'paused' ? '▶' : '⏸'}
-                    </button>
-                    <button className="btn btn-danger btn-sm" onClick={() => { if (confirm(`Delete "${m.name}"?`)) del.mutate(m.id); }}>Del</button>
+                    {canEdit && (
+                      <>
+                        <button className="btn btn-ghost btn-sm" title="Check now" onClick={() => checkNow(m.id)} disabled={checking === m.id} style={{ padding: '4px 7px', minWidth: 30 }}>
+                          {checking === m.id ? <span style={{ fontSize: 10 }}>…</span> : <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M13 8A5 5 0 1 1 8 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><path d="M13 3v5h-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                        </button>
+                        <button className="btn btn-ghost btn-sm" title={m.status === 'paused' ? 'Resume' : 'Pause'} onClick={() => toggle.mutate({ id: m.id, status: m.status === 'paused' ? 'active' : 'paused' })} style={{ padding: '4px 7px' }}>
+                          {m.status === 'paused' ? '▶' : '⏸'}
+                        </button>
+                        <button className="btn btn-danger btn-sm" onClick={() => { if (confirm(`Delete "${m.name}"?`)) del.mutate(m.id); }}>Del</button>
+                      </>
+                    )}
+                    {!canEdit && (
+                      <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>view only</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -258,7 +269,6 @@ export default function Watch() {
           )}
         </div>
 
-        {/* Incidents */}
         <div className="card">
           <div className="card-head">
             <span className="card-title">Incidents</span>
@@ -267,9 +277,7 @@ export default function Watch() {
             </span>
           </div>
           {incidents.length === 0 ? (
-            <div style={{ padding: 28, textAlign: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>
-              No incidents in the last 30 days 🎉
-            </div>
+            <div style={{ padding: 28, textAlign: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>No incidents in the last 30 days 🎉</div>
           ) : (
             <>
               <div className="thead" style={{ gridTemplateColumns: '3fr 100px 90px 1fr' }}>
@@ -288,7 +296,7 @@ export default function Watch() {
         </div>
       </div>
 
-      {showAdd && <AddMonitorModal onClose={() => setShowAdd(false)} onSave={create.mutateAsync} />}
+      {showAdd && canEdit && <AddMonitorModal onClose={() => setShowAdd(false)} onSave={create.mutateAsync} />}
       {chart && <ChartModal monitorId={chart.id} monitorName={chart.name} onClose={() => setChart(null)} />}
     </div>
   );

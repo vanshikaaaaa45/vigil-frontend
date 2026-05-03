@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../store/auth';
+import { useTeam } from '../../store/team';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/client';
 import { useState } from 'react';
@@ -71,6 +72,7 @@ function LiveDot({ status }) {
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { activeRole } = useTeam();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -212,6 +214,12 @@ export default function Layout() {
 
       {/* ── Main ────────────────────────────────────────────────── */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        {activeRole === 'viewer' && (
+          <div style={{ background: 'rgba(245,158,11,.08)', borderBottom: '1px solid rgba(245,158,11,.2)', padding: '7px 20px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--amber)', flexShrink: 0 }}>
+            <span>👁</span>
+            <span><strong>View only</strong> — you have viewer access to this team. Contact an admin to make changes.</span>
+          </div>
+        )}
         <Outlet />
       </main>
     </div>

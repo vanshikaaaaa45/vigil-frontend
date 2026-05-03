@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { io } from 'socket.io-client';
 import { useAuth } from '../store/auth';
 import api from '../api/client';
+import { useCanEdit } from '../store/team';
 
 const LEVEL_COLOR = { error: 'var(--red)', warn: 'var(--amber)', info: 'var(--blue2)', debug: 'var(--muted)' };
 const LEVEL_BG    = { error: 'rgba(244,63,94,.1)', warn: 'rgba(245,158,11,.1)', info: 'rgba(99,102,241,.1)', debug: 'rgba(96,96,128,.08)' };
@@ -155,6 +156,7 @@ const PAGE = 50;
 export default function Stream() {
   const { accessToken } = useAuth();
   const qc = useQueryClient();
+  const canEdit = useCanEdit();
 
   const [liveLogs, setLiveLogs] = useState([]);
   const [paused, setPaused]     = useState(false);
@@ -251,7 +253,7 @@ export default function Stream() {
           <button className={`btn btn-sm ${paused ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPaused(p => !p)}>
             {paused ? '▶ Resume' : '⏸ Pause'}
           </button>
-          <button className="btn btn-primary btn-sm" onClick={() => setShowRule(true)}>+ Alert Rule</button>
+          {canEdit && <button className="btn btn-primary btn-sm" onClick={() => setShowRule(true)}>+ Alert Rule</button>}
         </div>
       </div>
 
@@ -360,7 +362,7 @@ export default function Stream() {
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-head">
             <span className="card-title">Alert rules</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowRule(true)}>+ Add rule</button>
+            {canEdit && <button className="btn btn-ghost btn-sm" onClick={() => setShowRule(true)}>+ Add rule</button>}
           </div>
           {rules.length === 0 ? (
             <div className="empty">
@@ -370,7 +372,7 @@ export default function Stream() {
                 Create rules that fire when error counts spike.<br />
                 Get emailed and Slacked the moment something breaks.
               </div>
-              <button className="btn btn-primary" onClick={() => setShowRule(true)}>+ Create first rule</button>
+              {canEdit && <button className="btn btn-primary" onClick={() => setShowRule(true)}>+ Create first rule</button>}
             </div>
           ) : (
             <>
@@ -396,7 +398,7 @@ export default function Stream() {
                     <div style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--muted)' }}>
                       {r.last_triggered ? new Date(r.last_triggered).toLocaleTimeString() : 'Never'}
                     </div>
-                    <button className="btn btn-danger btn-sm" onClick={() => { if (confirm(`Delete rule "${r.name}"?`)) deleteRule.mutate(r.id); }}>Del</button>
+                    {canEdit && <button className="btn btn-danger btn-sm" onClick={() => { if (confirm(`Delete rule "${r.name}"?`)) deleteRule.mutate(r.id); }}>Del</button>}
                   </div>
                 );
               })}
@@ -446,7 +448,7 @@ export default function Stream() {
         </div>
       </div>
 
-      {showRule && <AddRuleModal onClose={() => setShowRule(false)} onCreate={data => createRule.mutateAsync(data)} />}
+      {showRule && canEdit && <AddRuleModal onClose={() => setShowRule(false)} onCreate={data => createRule.mutateAsync(data)} />}
       {detail   && <LogDetail log={detail} onClose={() => setDetail(null)} />}
     </div>
   );

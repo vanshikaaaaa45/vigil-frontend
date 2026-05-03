@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
+import { useCanEdit } from '../store/team';
 
 export default function Relay() {
   const qc = useQueryClient();
+  const canEdit = useCanEdit();
   const [sel, setSel]         = useState(null);
   const [showCh, setShowCh]   = useState(false);
   const [showLn, setShowLn]   = useState(false);
@@ -37,7 +39,7 @@ export default function Relay() {
           <div className="topbar-title">Relay</div>
           <div className="topbar-sub">Webhook router · fan-out · HMAC signing · auto-retries</div>
         </div>
-        <button className="btn btn-primary btn-sm" onClick={() => setShowCh(true)}>+ New channel</button>
+        {canEdit && <button className="btn btn-primary btn-sm" onClick={() => setShowCh(true)}>+ New channel</button>}
       </div>
 
       <div className="page-scroll">
@@ -105,8 +107,8 @@ export default function Relay() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setShowLn(true)}>+ Listener</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => { if (confirm(`Delete channel #${active.name}?`)) deleteCh.mutate(active.id); }}>Delete channel</button>
+                      {canEdit && <button className="btn btn-ghost btn-sm" onClick={() => setShowLn(true)}>+ Listener</button>}
+                      {canEdit && <button className="btn btn-danger btn-sm" onClick={() => { if (confirm(`Delete channel #${active.name}?`)) deleteCh.mutate(active.id); }}>Delete channel</button>}
                     </div>
                   </div>
                 </div>
@@ -125,7 +127,7 @@ export default function Relay() {
                           <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--blue2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.url}</div>
                         </div>
                         <span className="pill pill-green" style={{ fontSize: 9 }}>ACTIVE</span>
-                        <button className="btn btn-danger btn-sm" style={{ padding: '3px 8px' }} onClick={() => delLn.mutate(l.id)}>×</button>
+                        {canEdit && <button className="btn btn-danger btn-sm" style={{ padding: '3px 8px' }} onClick={() => delLn.mutate(l.id)}>×</button>}
                       </div>
                     ))}
                   </div>
