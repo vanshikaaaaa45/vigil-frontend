@@ -35,6 +35,16 @@ const PLATFORM_NAV = [
 
 const ACCOUNT_NAV = [
   {
+    to: '/team', label: 'Team', icon: (
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+        <circle cx="5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="11" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M1 13c0-2 1.8-3.5 4-3.5s4 1.5 4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M11 9.5c2.2 0 4 1.5 4 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
     to: '/keys', label: 'API Keys', icon: (
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
         <circle cx="6" cy="7" r="3.5" stroke="currentColor" strokeWidth="1.5"/>

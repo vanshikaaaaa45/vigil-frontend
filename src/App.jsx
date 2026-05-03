@@ -5,6 +5,7 @@ import { useAuth } from './store/auth';
 import { rehydrateToken } from './api/client';
 import './styles/globals.css';
 
+
 import Layout     from './components/shared/Layout';
 import Landing    from './pages/Landing';
 import Login      from './pages/Login';
@@ -19,6 +20,7 @@ import Stream     from './pages/Stream';
 import Relay      from './pages/Relay';
 import Keys       from './pages/Keys';
 import Settings   from './pages/Settings';
+import Team       from './pages/Team';  
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -94,6 +96,7 @@ export default function App() {
             <Route path="/relay"    element={<Relay />} />
             <Route path="/keys"     element={<Keys />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/team"     element={<Team />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
