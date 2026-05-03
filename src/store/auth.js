@@ -5,7 +5,7 @@ export const useAuth = create(
   persist(
     (set) => ({
       user:            null,
-      accessToken:     null,   // never persisted — lives in memory only
+      accessToken:     null,
       isAuthenticated: false,
 
       setAuth:  (user, accessToken) => set({ user, accessToken, isAuthenticated: true }),
@@ -15,8 +15,13 @@ export const useAuth = create(
     }),
     {
       name: 'vigil-auth',
-      // persist ONLY user and isAuthenticated — token always regenerated from cookie
-      partialize: (s) => ({ user: s.user, isAuthenticated: s.isAuthenticated }),
+      // Persist user + isAuthenticated + accessToken
+      // accessToken expires in 15min but we handle refresh automatically
+      partialize: (s) => ({
+        user:            s.user,
+        isAuthenticated: s.isAuthenticated,
+        accessToken:     s.accessToken,   // ← persist token so it survives refresh
+      }),
     }
   )
 );

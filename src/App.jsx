@@ -50,31 +50,22 @@ export default function App() {
   useEffect(() => {
     (async () => {
       if (isAuthenticated) {
-        console.log('[boot] user is authenticated, rehydrating token...');
+        // Restore token — tries cookie first, falls back to stored token
         const ok = await rehydrateToken();
-        console.log('[boot] rehydrateToken result:', ok);
 
         if (ok) {
+          // Token is valid — fetch teams to get real role
           try {
-            console.log('[boot] fetching teams...');
             const { data } = await api.get('/teams');
-            console.log('[boot] teams response:', data);
             const teams = data.teams || [];
             if (teams.length > 0) {
               const active = teams.find(t => t.id === activeTeamId) || teams[0];
-              console.log('[boot] setting active team:', active.id, 'role:', active.role);
               setActive(active.id, active.role);
-            } else {
-              console.warn('[boot] no teams returned');
             }
           } catch (e) {
-            console.error('[boot] teams fetch error:', e.response?.status, e.message);
+            console.warn('[vigil] teams fetch failed:', e.message);
           }
-        } else {
-          console.warn('[boot] rehydrateToken failed — no valid cookie');
         }
-      } else {
-        console.log('[boot] user not authenticated, skipping team load');
       }
       setBooted(true);
     })();
