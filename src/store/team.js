@@ -6,14 +6,17 @@ export const useTeam = create(
     (set) => ({
       activeTeamId: null,
       activeRole:   null,
+
       setActive: (teamId, role) => set({ activeTeamId: teamId, activeRole: role }),
       clear:     ()             => set({ activeTeamId: null, activeRole: null }),
     }),
     {
       name: 'vigil-team',
+      // Persist BOTH — teamId needed to send X-Team-Id header
+      // role needed so restrictions work on page refresh
       partialize: s => ({
         activeTeamId: s.activeTeamId,
-        activeRole:   s.activeRole,  // ← persist role so it survives refresh
+        activeRole:   s.activeRole,
       }),
     }
   )
