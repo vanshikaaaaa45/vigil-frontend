@@ -94,6 +94,7 @@ export default function App() {
           <Route path="/forgot-password" element={<Forgot />} />
           <Route path="/reset-password"  element={<Reset />} />
           <Route path="/status/:slug"    element={<StatusPage />} />
+          <Route path="/demo"             element={<Demo />} />
 
           <Route path="/login"  element={<Public><Login /></Public>} />
           <Route path="/signup" element={<Public><Signup /></Public>} />
