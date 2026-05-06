@@ -237,6 +237,7 @@ export default function Watch() {
   const [chart, setChart]       = useState(null);
   const [checking, setChecking] = useState(null);
   const [badgeCopied, setBadgeCopied] = useState(null);
+  const [maintenance, setMaintenance] = useState(null);
 
   const { data: monitors = [], isLoading } = useQuery({ queryKey: ['monitors'],    queryFn: () => api.get('/monitors').then(r => r.data.monitors), refetchInterval: 30_000 });
   const { data: stats }                    = useQuery({ queryKey: ['watch-stats'], queryFn: () => api.get('/monitors/stats').then(r => r.data), refetchInterval: 30_000 });
@@ -261,7 +262,7 @@ export default function Watch() {
     catch { setChecking(null); }
   };
 
-  const STATUS_PILL = { up: 'pill-green', down: 'pill-red', slow: 'pill-amber', pending: 'pill-cyan' };
+  const STATUS_PILL = { up: 'pill-green', down: 'pill-red', slow: 'pill-amber', pending: 'pill-cyan', maintenance: 'pill-purple' };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -348,6 +349,11 @@ export default function Watch() {
                     {m.last_checked_at ? new Date(m.last_checked_at).toLocaleTimeString() : 'Never'}
                   </div>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    {canEdit && (
+                      <button className="btn btn-ghost btn-sm" title="Maintenance windows" onClick={() => setMaintenance({ id: m.id, name: m.name })} style={{ padding: '4px 7px', fontSize: 10 }}>
+                        🔧
+                      </button>
+                    )}
                     <button className="btn btn-ghost btn-sm" title="Copy uptime badge for README" onClick={() => {
                       const url = `${import.meta.env.VITE_API_URL || '/api'}/badge/${m.id}`;
                       const md  = `![${m.name} uptime](${url})`;
@@ -409,6 +415,7 @@ export default function Watch() {
       </div>
 
       {showAdd && canEdit && <AddMonitorModal onClose={() => setShowAdd(false)} onSave={create.mutateAsync} />}
+      {maintenance && canEdit && <MaintenanceModal monitorId={maintenance.id} monitorName={maintenance.name} onClose={() => setMaintenance(null)} />}
       {chart && <ChartModal monitorId={chart.id} monitorName={chart.name} onClose={() => setChart(null)} />}
     </div>
   );
