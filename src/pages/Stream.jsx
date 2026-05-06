@@ -164,6 +164,7 @@ export default function Stream() {
   const [page, setPage]         = useState(0);
   const [showRule, setShowRule] = useState(false);
   const [detail, setDetail]     = useState(null);
+  const [exporting, setExporting] = useState(false);
   const streamRef = useRef(null);
 
   // ── Queries ───────────────────────────────────────────────────
@@ -238,6 +239,52 @@ export default function Stream() {
     if (showLive && !paused && streamRef.current) streamRef.current.scrollTop = 0;
   }, [liveLogs.length]);
 
+  // ── Export logs as CSV ────────────────────────────────────────
+  const exportCSV = async () => {
+    setExporting(true);
+    try {
+      // Fetch up to 5000 logs with current filters
+      const { data } = await api.get('/logs', {
+        params: {
+          service: filter.service || undefined,
+          level:   filter.level   || undefined,
+          search:  filter.search  || undefined,
+          limit:   5000,
+          offset:  0,
+        },
+      });
+
+      const logs = data.logs || [];
+      if (logs.length === 0) { alert('No logs to export with current filters.'); return; }
+
+      // Build CSV
+      const headers = ['timestamp', 'service', 'level', 'message', 'meta'];
+      const rows = logs.map(l => [
+        new Date(l.timestamp).toISOString(),
+        l.service,
+        l.level,
+        `"${(l.message || '').replace(/"/g, '""')}"`,  // escape quotes
+        `"${JSON.stringify(typeof l.meta === 'string' ? JSON.parse(l.meta || '{}') : l.meta || {}).replace(/"/g, '""')}"`,
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+      // Download
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href     = url;
+      a.download = `vigil-logs-${date}${filter.service ? '-' + filter.service : ''}${filter.level ? '-' + filter.level : ''}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Export failed: ' + (e.message || 'Unknown error'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="topbar">
@@ -252,6 +299,9 @@ export default function Stream() {
           </div>
           <button className={`btn btn-sm ${paused ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setPaused(p => !p)}>
             {paused ? '▶ Resume' : '⏸ Pause'}
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={exportCSV} disabled={exporting} title="Export logs as CSV">
+            {exporting ? '⏳' : '⬇'} {exporting ? 'Exporting…' : 'Export CSV'}
           </button>
           {canEdit && <button className="btn btn-primary btn-sm" onClick={() => setShowRule(true)}>+ Alert Rule</button>}
         </div>
