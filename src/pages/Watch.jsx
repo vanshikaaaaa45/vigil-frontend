@@ -171,6 +171,105 @@ function ChartModal({ monitorId, monitorName, onClose }) {
 }
 
 // ── Add monitor modal ─────────────────────────────────────────────
+
+// ── Maintenance window modal ──────────────────────────────────────
+function MaintenanceModal({ monitorId, monitorName, onClose }) {
+  const qc = useQueryClient();
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const localNow = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const localEnd = new Date(now.getTime() + 60*60*1000);
+  const localEndS = `${localEnd.getFullYear()}-${pad(localEnd.getMonth()+1)}-${pad(localEnd.getDate())}T${pad(localEnd.getHours())}:${pad(localEnd.getMinutes())}`;
+
+  const [f, setF] = useState({ title: 'Scheduled maintenance', starts_at: localNow, ends_at: localEndS, repeat_weekly: false });
+  const [err, setErr] = useState('');
+
+  const { data: windows = [] } = useQuery({
+    queryKey: ['maintenance', monitorId],
+    queryFn:  () => api.get(`/monitors/${monitorId}/maintenance`).then(r => r.data.windows),
+  });
+
+  const create = useMutation({
+    mutationFn: () => api.post(`/monitors/${monitorId}/maintenance`, f),
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['maintenance', monitorId] }); qc.invalidateQueries({ queryKey: ['monitors'] }); setErr(''); },
+    onError:    e  => setErr(e.response?.data?.error || 'Failed'),
+  });
+
+  const remove = useMutation({
+    mutationFn: (wid) => api.delete(`/monitors/${monitorId}/maintenance/${wid}`),
+    onSuccess:  ()    => qc.invalidateQueries({ queryKey: ['maintenance', monitorId] }),
+  });
+
+  const isActive = (w) => new Date(w.starts_at) <= new Date() && new Date(w.ends_at) >= new Date();
+
+  return (
+    <div className="overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 520 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+          <div>
+            <div className="modal-title" style={{ marginBottom: 2 }}>Maintenance windows</div>
+            <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--muted)' }}>{monitorName}</div>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+
+        {windows.length > 0 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 8 }}>Scheduled</div>
+            {windows.map(w => (
+              <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 7, marginBottom: 6 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 7 }}>
+                    {w.title}
+                    {isActive(w) && <span style={{ fontSize: 9, fontFamily: 'DM Mono', background: 'rgba(245,158,11,.1)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>ACTIVE</span>}
+                  </div>
+                  <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>
+                    {new Date(w.starts_at).toLocaleString()} → {new Date(w.ends_at).toLocaleString()}
+                    {w.repeat_weekly && ' · repeats weekly'}
+                  </div>
+                </div>
+                <button className="btn btn-danger btn-sm" onClick={() => remove.mutate(w.id)} style={{ padding: '3px 8px' }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ borderTop: windows.length > 0 ? '1px solid var(--border)' : 'none', paddingTop: windows.length > 0 ? 16 : 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 12 }}>Schedule new window</div>
+          {err && <div className="err-box">⚠ {err}</div>}
+          <div className="field">
+            <label className="label">Title</label>
+            <input className="input" placeholder="Scheduled maintenance" value={f.title} onChange={e => setF(p => ({ ...p, title: e.target.value }))} />
+          </div>
+          <div className="row2">
+            <div className="field">
+              <label className="label">Starts at</label>
+              <input className="input" type="datetime-local" value={f.starts_at} onChange={e => setF(p => ({ ...p, starts_at: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label className="label">Ends at</label>
+              <input className="input" type="datetime-local" value={f.ends_at} onChange={e => setF(p => ({ ...p, ends_at: e.target.value }))} />
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '10px 12px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 7 }}>
+            <input type="checkbox" id="repeat" checked={f.repeat_weekly} onChange={e => setF(p => ({ ...p, repeat_weekly: e.target.checked }))} />
+            <label htmlFor="repeat" style={{ fontSize: 12, color: 'var(--text2)', cursor: 'pointer' }}>Repeat every week at this time</label>
+          </div>
+          <div style={{ background: 'rgba(245,158,11,.06)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 6, padding: '9px 12px', marginBottom: 14, fontSize: 11, fontFamily: 'DM Mono', color: 'var(--amber)', lineHeight: 1.7 }}>
+            ⚠ During maintenance: checks pause, no alerts fired, status shows MAINTENANCE on status page.
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Close</button>
+            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => create.mutate()} disabled={create.isPending}>
+              {create.isPending ? 'Scheduling…' : 'Schedule window'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AddMonitorModal({ onClose, onSave }) {
   const [f, setF] = useState({ name: '', url: 'https://', method: 'GET', interval_seconds: 60, notify_slack: '', sla_ms: '' });
   const [err, setErr] = useState('');
