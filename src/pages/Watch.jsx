@@ -234,6 +234,7 @@ export default function Watch() {
   const [showAdd, setShowAdd]   = useState(false);
   const [chart, setChart]       = useState(null);
   const [checking, setChecking] = useState(null);
+  const [badgeCopied, setBadgeCopied] = useState(null);
 
   const { data: monitors = [], isLoading } = useQuery({ queryKey: ['monitors'],    queryFn: () => api.get('/monitors').then(r => r.data.monitors), refetchInterval: 30_000 });
   const { data: stats }                    = useQuery({ queryKey: ['watch-stats'], queryFn: () => api.get('/monitors/stats').then(r => r.data), refetchInterval: 30_000 });
@@ -345,6 +346,15 @@ export default function Watch() {
                     {m.last_checked_at ? new Date(m.last_checked_at).toLocaleTimeString() : 'Never'}
                   </div>
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <button className="btn btn-ghost btn-sm" title="Copy uptime badge for README" onClick={() => {
+                      const url = `${import.meta.env.VITE_API_URL || '/api'}/badge/${m.id}`;
+                      const md  = `![${m.name} uptime](${url})`;
+                      navigator.clipboard.writeText(md);
+                      setBadgeCopied(m.id);
+                      setTimeout(() => setBadgeCopied(null), 2000);
+                    }} style={{ padding: '4px 7px', fontSize: 10 }}>
+                      {badgeCopied === m.id ? '✓' : '🏷'}
+                    </button>
                     <button className="btn btn-ghost btn-sm" title="Response time chart" onClick={() => setChart({ id: m.id, name: m.name })} style={{ padding: '4px 7px' }}>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 12l3-4 3 2 3-5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </button>
