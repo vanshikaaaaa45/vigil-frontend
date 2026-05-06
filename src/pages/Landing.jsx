@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const WAITLIST_URL = 'https://forms.gle/YOUR_GOOGLE_FORM_ID';  // ← replace with your Google Form URL
+const WAITLIST_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfv6UQHAxGNlZWP65rqhWyRdMWQkZnvQuOVd68b8RIrye8xag/viewform?usp=publish-editor';  // ← replace with your Google Form URL
 
 const F = ({ icon, title, desc, color, badge }) => (
   <div style={{ background: '#0f0f17', border: '1px solid #1e1e2e', borderRadius: 12, padding: '20px 22px', position: 'relative', overflow: 'hidden', transition: 'border-color .2s' }}
