@@ -139,7 +139,19 @@ export default function Settings() {
               {/* Usage bars */}
               <UsageBar label="Monitors"      current={monitorCount} limit={limits.monitors}      />
               <UsageBar label="Relay channels" current={relayCount}   limit={limits.relay_channels} />
-              <UsageBar label="Log retention"  current={limits.log_retention_days} limit={limits.log_retention_days} unit=" days" />
+              {/* Log retention is a feature, not a usage counter */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5, fontSize: 12 }}>
+                  <span style={{ color: 'var(--text2)' }}>Log retention</span>
+                  <span style={{ fontFamily: 'DM Mono', fontSize: 11, color: 'var(--muted)' }}>
+                    {limits.log_retention_days} days
+                    {plan === 'free' && <span style={{ marginLeft: 8, color: 'var(--blue2)' }}>↑ 30 days on Pro</span>}
+                  </span>
+                </div>
+                <div style={{ height: 5, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden' }}>
+                  <div style={{ width: `${(limits.log_retention_days / 90) * 100}%`, height: '100%', background: 'var(--blue2)', borderRadius: 3 }} />
+                </div>
+              </div>
             </div>
 
             {/* Plan comparison */}
