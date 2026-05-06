@@ -4,6 +4,8 @@ import { Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, 
 import api from '../api/client';
 import { useCanEdit } from '../store/team';
 import { useAuth } from '../store/auth';
+import { SkeletonStats, SkeletonTable } from '../components/shared/Skeleton';
+import { toast } from '../utils/toast';
 
 // ── Onboarding checklist ──────────────────────────────────────────
 const STORAGE_KEY = 'vigil-onboarding-dismissed';
@@ -249,13 +251,13 @@ export default function Watch() {
   const hasTeam  = (teamData?.[0]?.member_count || '1') !== '1';
   const onboardingDismissed = typeof window !== 'undefined' && localStorage.getItem('vigil-onboarding-dismissed') === 'true';
 
-  const create = useMutation({ mutationFn: d => api.post('/monitors', d),            onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
-  const del    = useMutation({ mutationFn: id => api.delete(`/monitors/${id}`),       onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
+  const create = useMutation({ mutationFn: d => api.post('/monitors', d), onSuccess: () => { qc.invalidateQueries({ queryKey: ['monitors'] }); toast.success('Monitor created!'); }, onError: e => toast.error(e.response?.data?.detail || e.response?.data?.error || 'Failed to create monitor') });
+  const del    = useMutation({ mutationFn: id => api.delete(`/monitors/${id}`),       onSuccess: () => { qc.invalidateQueries({ queryKey: ['monitors'] }); toast.success('Monitor deleted'); } });
   const toggle = useMutation({ mutationFn: ({ id, status }) => api.patch(`/monitors/${id}`, { status }), onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
 
   const checkNow = async (id) => {
     setChecking(id);
-    try { await api.post(`/monitors/${id}/check`); setTimeout(() => { qc.invalidateQueries({ queryKey: ['monitors'] }); setChecking(null); }, 6000); }
+    try { await api.post(`/monitors/${id}/check`); toast.info('Check started — results in ~5s'); setTimeout(() => { qc.invalidateQueries({ queryKey: ['monitors'] }); setChecking(null); }, 6000); }
     catch { setChecking(null); }
   };
 
@@ -308,7 +310,7 @@ export default function Watch() {
             <span className="card-meta">{monitors.length} configured</span>
           </div>
           {isLoading ? (
-            <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)', fontFamily: 'DM Mono', fontSize: 12 }}>Loading monitors…</div>
+            <div style={{ padding: '8px 0' }}>{[1,2,3].map(i => <div key={i} style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 16, alignItems: 'center' }}><div className='skeleton skeleton-text' style={{ flex: 2 }} /><div className='skeleton skeleton-text' style={{ flex: 1 }} /><div className='skeleton skeleton-text' style={{ flex: 1 }} /><div className='skeleton skeleton-text' style={{ flex: 1 }} /></div>)}</div>
           ) : monitors.length === 0 ? (
             <div className="empty">
               <div className="empty-icon">◉</div>
@@ -351,6 +353,7 @@ export default function Watch() {
                       const md  = `![${m.name} uptime](${url})`;
                       navigator.clipboard.writeText(md);
                       setBadgeCopied(m.id);
+                      toast.info('Badge markdown copied!');
                       setTimeout(() => setBadgeCopied(null), 2000);
                     }} style={{ padding: '4px 7px', fontSize: 10 }}>
                       {badgeCopied === m.id ? '✓' : '🏷'}
