@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-const WAITLIST_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfv6UQHAxGNlZWP65rqhWyRdMWQkZnvQuOVd68b8RIrye8xag/viewform?usp=publish-editor';  // ← replace with your Google Form URL
+const WAITLIST_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfv6UQHAxGNlZWP65rqhWyRdMWQkZnvQuOVd68b8RIrye8xag/viewform?usp=publish-editor';  // ← replace with your Google Form URL  // ← replace with your Google Form URL
 
 const F = ({ icon, title, desc, color, badge }) => (
   <div style={{ background: '#0f0f17', border: '1px solid #1e1e2e', borderRadius: 12, padding: '20px 22px', position: 'relative', overflow: 'hidden', transition: 'border-color .2s' }}
@@ -64,7 +64,7 @@ export default function Landing() {
           </Link>
 
           {/* ── Demo button ── */}
-          <Link to="/login" state={{ demoMode: true }}
+          <Link to="/demo"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#0f0f17', color: '#a0a0b8', padding: '12px 26px', borderRadius: 10, fontWeight: 600, fontSize: 14, border: '1px solid #2a2a3e', textDecoration: 'none' }}
             onMouseOver={e => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.color = '#f97316'; }}
             onMouseOut={e => { e.currentTarget.style.borderColor = '#2a2a3e'; e.currentTarget.style.color = '#a0a0b8'; }}>
@@ -205,7 +205,7 @@ export default function Landing() {
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', background: '#f97316', color: '#fff', padding: '12px 28px', borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(249,115,22,.3)' }}>Start for free →</Link>
-          <Link to="/login" state={{ demoMode: true }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f0f17', color: '#a0a0b8', padding: '12px 24px', borderRadius: 10, fontWeight: 600, fontSize: 14, border: '1px solid #2a2a3e', textDecoration: 'none' }}>
+          <Link to="/demo" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f0f17', color: '#a0a0b8', padding: '12px 24px', borderRadius: 10, fontWeight: 600, fontSize: 14, border: '1px solid #2a2a3e', textDecoration: 'none' }}>
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="currentColor"/></svg>
             Try demo
           </Link>
@@ -232,3 +232,5 @@ export default function Landing() {
     </div>
   );
 }
+
+

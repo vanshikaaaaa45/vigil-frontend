@@ -22,6 +22,7 @@ import Relay      from './pages/Relay';
 import Keys       from './pages/Keys';
 import Settings   from './pages/Settings';
 import Team       from './pages/Team';
+import Demo       from './pages/Demo';
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/forgot-password" element={<Forgot />} />
           <Route path="/reset-password"  element={<Reset />} />
           <Route path="/status/:slug"    element={<StatusPage />} />
+          <Route path="/demo"             element={<Demo />} />
 
           <Route path="/login"  element={<Public><Login /></Public>} />
           <Route path="/signup" element={<Public><Signup /></Public>} />
