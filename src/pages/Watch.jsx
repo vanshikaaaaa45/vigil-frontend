@@ -170,7 +170,7 @@ function ChartModal({ monitorId, monitorName, onClose }) {
 
 // ── Add monitor modal ─────────────────────────────────────────────
 function AddMonitorModal({ onClose, onSave }) {
-  const [f, setF] = useState({ name: '', url: 'https://', method: 'GET', interval_seconds: 60, notify_slack: '' });
+  const [f, setF] = useState({ name: '', url: 'https://', method: 'GET', interval_seconds: 60, notify_slack: '', sla_ms: '' });
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const submit = async (e) => {
@@ -205,6 +205,17 @@ function AddMonitorModal({ onClose, onSave }) {
           <div className="field">
             <label className="label">Slack webhook <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--muted)' }}>(optional)</span></label>
             <input className="input" placeholder="https://hooks.slack.com/services/..." value={f.notify_slack} onChange={e => setF(p => ({ ...p, notify_slack: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label className="label">
+              SLA threshold
+              <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--muted)', fontSize: 10, marginLeft: 6 }}>alert if response exceeds this (optional)</span>
+            </label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input className="input" type="number" min="100" max="30000" placeholder="e.g. 2000" value={f.sla_ms} onChange={e => setF(p => ({ ...p, sla_ms: e.target.value }))} />
+              <span style={{ fontFamily: 'DM Mono', fontSize: 12, color: 'var(--muted)', flexShrink: 0 }}>ms</span>
+            </div>
+            {f.sla_ms && <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--amber)', marginTop: 4 }}>Alert if response &gt; {f.sla_ms}ms</div>}
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
@@ -316,7 +327,10 @@ export default function Watch() {
                       {m.name}
                       {m.status === 'paused' && <span style={{ fontSize: 9, fontFamily: 'DM Mono', background: 'var(--bg4)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,.2)', padding: '1px 5px', borderRadius: 3 }}>PAUSED</span>}
                     </div>
-                    <div className="tsub">{m.url}</div>
+                    <div className="tsub">
+                      {m.url}
+                      {m.sla_ms && <span style={{ marginLeft: 8, fontFamily: 'DM Mono', fontSize: 10, color: 'var(--amber)', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 3, padding: '1px 5px' }}>SLA {m.sla_ms}ms</span>}
+                    </div>
                   </div>
                   <div>
                     <span className={`pill ${STATUS_PILL[m.last_status] || 'pill-cyan'}`}>
