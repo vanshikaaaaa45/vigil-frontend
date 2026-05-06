@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 
+const WAITLIST_URL = 'https://forms.gle/YOUR_GOOGLE_FORM_ID';  // ← replace with your Google Form URL
+
 const F = ({ icon, title, desc, color, badge }) => (
   <div style={{ background: '#0f0f17', border: '1px solid #1e1e2e', borderRadius: 12, padding: '20px 22px', position: 'relative', overflow: 'hidden', transition: 'border-color .2s' }}
     onMouseOver={e => e.currentTarget.style.borderColor = color + '40'}
@@ -29,11 +31,11 @@ export default function Landing() {
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.5px' }}>VIGIL</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <a href="#features" style={{ fontSize: 13, color: '#606080', textDecoration: 'none', fontWeight: 500, transition: 'color .15s' }} onMouseOver={e => e.target.style.color = '#e8e8f0'} onMouseOut={e => e.target.style.color = '#606080'}>Features</a>
-          <a href="#how" style={{ fontSize: 13, color: '#606080', textDecoration: 'none', fontWeight: 500 }} onMouseOver={e => e.target.style.color = '#e8e8f0'} onMouseOut={e => e.target.style.color = '#606080'}>How it works</a>
-          <a href="#pricing" style={{ fontSize: 13, color: '#606080', textDecoration: 'none', fontWeight: 500 }} onMouseOver={e => e.target.style.color = '#e8e8f0'} onMouseOut={e => e.target.style.color = '#606080'}>Pricing</a>
-          <Link to="/login" style={{ fontSize: 13, color: '#a0a0b8', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
-          <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#f97316', color: '#fff', padding: '8px 18px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', boxShadow: '0 2px 8px rgba(249,115,22,.3)', transition: 'all .15s' }}
+          <a href="#features" style={{ fontSize: 13, color: '#606080', textDecoration: 'none', fontWeight: 500 }} onMouseOver={e => e.target.style.color = '#e8e8f0'} onMouseOut={e => e.target.style.color = '#606080'}>Features</a>
+          <a href="#how"      style={{ fontSize: 13, color: '#606080', textDecoration: 'none', fontWeight: 500 }} onMouseOver={e => e.target.style.color = '#e8e8f0'} onMouseOut={e => e.target.style.color = '#606080'}>How it works</a>
+          <a href="#pricing"  style={{ fontSize: 13, color: '#606080', textDecoration: 'none', fontWeight: 500 }} onMouseOver={e => e.target.style.color = '#e8e8f0'} onMouseOut={e => e.target.style.color = '#606080'}>Pricing</a>
+          <Link to="/login"  style={{ fontSize: 13, color: '#a0a0b8', fontWeight: 500, textDecoration: 'none' }}>Sign in</Link>
+          <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#f97316', color: '#fff', padding: '8px 18px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', boxShadow: '0 2px 8px rgba(249,115,22,.3)' }}
             onMouseOver={e => e.currentTarget.style.background = '#fb923c'}
             onMouseOut={e => e.currentTarget.style.background = '#f97316'}>
             Get started free →
@@ -54,13 +56,37 @@ export default function Landing() {
         <p style={{ fontSize: 16, color: '#606080', fontFamily: 'DM Mono, monospace', lineHeight: 1.8, maxWidth: 560, margin: '0 auto 36px' }}>
           Monitor APIs. Stream logs. Route webhooks.<br />One npm package. Zero infrastructure to manage.
         </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f97316', color: '#fff', padding: '12px 26px', borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(249,115,22,.35)' }}>Get started free →</Link>
-          <Link to="/login" style={{ display: 'inline-flex', alignItems: 'center', background: '#0f0f17', color: '#a0a0b8', padding: '12px 26px', borderRadius: 10, fontWeight: 600, fontSize: 14, border: '1px solid #1e1e2e', textDecoration: 'none' }}>Sign in</Link>
+
+        {/* CTA buttons — now includes Demo */}
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+          <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f97316', color: '#fff', padding: '12px 26px', borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(249,115,22,.35)' }}>
+            Get started free →
+          </Link>
+
+          {/* ── Demo button ── */}
+          <Link to="/login" state={{ demoMode: true }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#0f0f17', color: '#a0a0b8', padding: '12px 26px', borderRadius: 10, fontWeight: 600, fontSize: 14, border: '1px solid #2a2a3e', textDecoration: 'none' }}
+            onMouseOver={e => { e.currentTarget.style.borderColor = '#f97316'; e.currentTarget.style.color = '#f97316'; }}
+            onMouseOut={e => { e.currentTarget.style.borderColor = '#2a2a3e'; e.currentTarget.style.color = '#a0a0b8'; }}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="currentColor"/>
+            </svg>
+            Live demo
+          </Link>
+
+          <Link to="/login" style={{ display: 'inline-flex', alignItems: 'center', background: 'transparent', color: '#606080', padding: '12px 20px', borderRadius: 10, fontWeight: 600, fontSize: 14, textDecoration: 'none' }}>
+            Sign in
+          </Link>
+        </div>
+
+        {/* Demo hint */}
+        <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#404060', marginBottom: 40 }}>
+          Demo uses: <span style={{ color: '#606080' }}>demo@vigil.dev</span> · <span style={{ color: '#606080' }}>Demo@12345</span> — explore without signing up
         </div>
 
         {/* Code block */}
-        <div style={{ background: '#0f0f17', border: '1px solid #1e1e2e', borderRadius: 14, padding: '20px 24px', marginTop: 52, textAlign: 'left', maxWidth: 560, margin: '52px auto 0', boxShadow: '0 24px 64px rgba(0,0,0,.5)' }}>
+        <div style={{ background: '#0f0f17', border: '1px solid #1e1e2e', borderRadius: 14, padding: '20px 24px', textAlign: 'left', maxWidth: 560, margin: '0 auto', boxShadow: '0 24px 64px rgba(0,0,0,.5)' }}>
           <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
             {['#f43f5e', '#f59e0b', '#22d3a5'].map(c => <div key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c }} />)}
           </div>
@@ -99,12 +125,12 @@ export default function Landing() {
           <p style={{ color: '#606080', fontFamily: 'DM Mono, monospace', fontSize: 12, lineHeight: 1.8 }}>Three products. One SDK. Built for developers who ship fast.</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-          <F icon="◉" color="#22d3a5" title="Watch — API Monitor" badge="Watch" desc="Check any HTTP endpoint every 60 seconds. Get emailed + Slacked when it goes down. Uptime sparkbars, response time charts, auto-resolving incidents." />
-          <F icon="⚡" color="#6366f1" title="Stream — Log Aggregator" badge="Stream" desc="Real-time log stream over WebSocket. Full-text search. Service + level filters. Sliding-window alert rules fire when error counts spike. Click any log for full metadata." />
-          <F icon="⟳" color="#a78bfa" title="Relay — Webhook Router" badge="Relay" desc="Fan-out a single webhook to multiple services. HMAC-SHA256 signed delivery. 3 automatic retries (5s → 30s → 2min). One-click event replay." />
-          <F icon="🌐" color="#2dd4bf" title="Public Status Page" desc="A public /status/your-company URL showing live monitor statuses. No login needed. Share with customers so they can self-serve during incidents." />
-          <F icon="📧" color="#f59e0b" title="Smart Alerts" desc="Email + Slack + Discord alerts. Monitor down/up, log alert rules, weekly digest. Per-monitor Slack overrides or global account-level webhook." />
-          <F icon="📦" color="#f43f5e" title="vigil-sdk" badge="npm" desc="npm install vigil-sdk. Five methods: vigil.log() vigil.error() vigil.warn() vigil.info() vigil.event(). Never crashes your app — all errors are silent." />
+          <F icon="◉" color="#22d3a5" title="Watch — API Monitor"       badge="Watch"  desc="Check any HTTP endpoint every 60 seconds. Get emailed + Slacked when it goes down. Uptime sparkbars, response time charts, auto-resolving incidents." />
+          <F icon="⚡" color="#6366f1" title="Stream — Log Aggregator"   badge="Stream" desc="Real-time log stream over WebSocket. Full-text search. Service + level filters. Sliding-window alert rules fire when error counts spike. Click any log for full metadata." />
+          <F icon="⟳" color="#a78bfa" title="Relay — Webhook Router"    badge="Relay"  desc="Fan-out a single webhook to multiple services. HMAC-SHA256 signed delivery. 3 automatic retries (5s → 30s → 2min). One-click event replay." />
+          <F icon="🌐" color="#2dd4bf" title="Public Status Page"                       desc="A public /status/your-company URL showing live monitor statuses. No login needed. Share with customers so they can self-serve during incidents." />
+          <F icon="📧" color="#f59e0b" title="Smart Alerts"                             desc="Email + Slack + Discord alerts. Monitor down/up, log alert rules, weekly digest. Per-monitor Slack overrides or global account-level webhook." />
+          <F icon="📦" color="#f43f5e" title="vigil-sdk"                 badge="npm"   desc="npm install vigil-sdk. Five methods: vigil.log() vigil.error() vigil.warn() vigil.info() vigil.event(). Never crashes your app — all errors are silent." />
         </div>
       </section>
 
@@ -115,10 +141,10 @@ export default function Landing() {
           <p style={{ color: '#606080', fontFamily: 'DM Mono, monospace', fontSize: 12, marginBottom: 44 }}>No YAML. No Docker. No Kubernetes. No infrastructure.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
             {[
-              ['01', 'Create account', 'Sign up — free forever for solo devs. No credit card.'],
-              ['02', 'Add a monitor', 'Paste any URL. VIGIL starts checking it every 60 seconds.'],
-              ['03', 'Install SDK', 'npm install vigil-sdk → one line to initialize → done.'],
-              ['04', 'Sleep well', 'You get paged when something breaks. Not your users.'],
+              ['01', 'Create account',  'Sign up — free forever for solo devs. No credit card.'],
+              ['02', 'Add a monitor',   'Paste any URL. VIGIL starts checking it every 60 seconds.'],
+              ['03', 'Install SDK',     'npm install vigil-sdk → one line to initialize → done.'],
+              ['04', 'Sleep well',      'You get paged when something breaks. Not your users.'],
             ].map(([n, t, d]) => (
               <div key={n} style={{ background: '#0a0a0f', border: '1px solid #1e1e2e', borderRadius: 11, padding: '18px 20px', textAlign: 'left' }}>
                 <div style={{ fontFamily: 'DM Mono, monospace', fontSize: 11, color: '#f97316', fontWeight: 700, marginBottom: 10 }}>{n}</div>
@@ -138,8 +164,8 @@ export default function Landing() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 640, margin: '0 auto' }}>
           {[
-            { name: 'Free', price: '$0', period: 'forever', features: ['3 monitors', '7 days log retention', '1 relay channel', 'Email alerts', 'Public status page'], cta: 'Get started', link: '/signup', accent: false },
-            { name: 'Pro', price: '$9', period: 'per month', features: ['Unlimited monitors', '30 days log retention', 'Unlimited relay channels', 'Email + Slack + Discord', 'Priority support'], cta: 'Coming soon', link: '/signup', accent: true },
+            { name: 'Free', price: '$0', period: 'forever', features: ['3 monitors', '7 days log retention', '1 relay channel', 'Email alerts', 'Public status page'], cta: 'Get started', ctaLink: '/signup', accent: false },
+            { name: 'Pro',  price: '$9', period: 'per month', features: ['Unlimited monitors', '30 days log retention', 'Unlimited relay channels', 'Email + Slack + Discord', 'Priority support'], cta: 'Join waitlist', ctaHref: WAITLIST_URL, accent: true },
           ].map(plan => (
             <div key={plan.name} style={{ background: '#0f0f17', border: `1px solid ${plan.accent ? 'rgba(249,115,22,.4)' : '#1e1e2e'}`, borderRadius: 14, padding: '24px', position: 'relative', boxShadow: plan.accent ? '0 0 40px rgba(249,115,22,.08)' : 'none' }}>
               {plan.accent && <div style={{ position: 'absolute', top: -1, left: 24, right: 24, height: 2, background: 'linear-gradient(90deg, #f97316, #fb923c)', borderRadius: '0 0 2px 2px' }} />}
@@ -155,9 +181,17 @@ export default function Landing() {
                   </div>
                 ))}
               </div>
-              <Link to={plan.link} style={{ display: 'block', textAlign: 'center', background: plan.accent ? '#f97316' : '#141420', color: plan.accent ? '#fff' : '#a0a0b8', padding: '10px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', border: `1px solid ${plan.accent ? 'transparent' : '#1e1e2e'}` }}>
-                {plan.cta}
-              </Link>
+              {plan.ctaHref ? (
+                <a href={plan.ctaHref} target="_blank" rel="noreferrer"
+                  style={{ display: 'block', textAlign: 'center', background: '#f97316', color: '#fff', padding: '10px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>
+                  {plan.cta} →
+                </a>
+              ) : (
+                <Link to={plan.ctaLink}
+                  style={{ display: 'block', textAlign: 'center', background: '#141420', color: '#a0a0b8', padding: '10px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none', border: '1px solid #1e1e2e' }}>
+                  {plan.cta}
+                </Link>
+              )}
             </div>
           ))}
         </div>
@@ -169,7 +203,13 @@ export default function Landing() {
         <p style={{ color: '#606080', fontFamily: 'DM Mono, monospace', fontSize: 12, lineHeight: 1.8, marginBottom: 32 }}>
           Everything you need. One dashboard. Free forever for solo devs.
         </p>
-        <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', background: '#f97316', color: '#fff', padding: '12px 28px', borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(249,115,22,.3)' }}>Start for free →</Link>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link to="/signup" style={{ display: 'inline-flex', alignItems: 'center', background: '#f97316', color: '#fff', padding: '12px 28px', borderRadius: 10, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 4px 16px rgba(249,115,22,.3)' }}>Start for free →</Link>
+          <Link to="/login" state={{ demoMode: true }} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0f0f17', color: '#a0a0b8', padding: '12px 24px', borderRadius: 10, fontWeight: 600, fontSize: 14, border: '1px solid #2a2a3e', textDecoration: 'none' }}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.5"/><path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="currentColor"/></svg>
+            Try demo
+          </Link>
+        </div>
       </section>
 
       {/* Footer */}
@@ -181,7 +221,7 @@ export default function Landing() {
         </div>
         <div style={{ display: 'flex', gap: 20 }}>
           <Link to="/signup" style={{ fontSize: 12, color: '#606080', textDecoration: 'none' }}>Sign up</Link>
-          <Link to="/login" style={{ fontSize: 12, color: '#606080', textDecoration: 'none' }}>Login</Link>
+          <Link to="/login"  style={{ fontSize: 12, color: '#606080', textDecoration: 'none' }}>Login</Link>
         </div>
       </footer>
 

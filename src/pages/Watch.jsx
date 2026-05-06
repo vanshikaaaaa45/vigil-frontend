@@ -1,9 +1,75 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
 import api from '../api/client';
 import { useCanEdit } from '../store/team';
+import { useAuth } from '../store/auth';
 
+// ── Onboarding checklist ──────────────────────────────────────────
+const STORAGE_KEY = 'vigil-onboarding-dismissed';
+
+function OnboardingChecklist({ monitors, hasLogs, hasRelay, hasTeam }) {
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(STORAGE_KEY) === 'true');
+  const [collapsed, setCollapsed] = useState(false);
+
+  const tasks = [
+    { id: 'monitor', label: 'Add your first monitor', sub: 'Go to Watch → + New monitor', done: monitors > 0, link: null },
+    { id: 'log',     label: 'Send your first log',    sub: 'npm install vigil-sdk → vigil.log()', done: hasLogs,    link: '/keys' },
+    { id: 'relay',   label: 'Create a relay channel', sub: 'Go to Relay → + New channel',        done: hasRelay,  link: '/relay' },
+    { id: 'team',    label: 'Invite a teammate',       sub: 'Go to Team → + Invite member',       done: hasTeam,   link: '/team' },
+  ];
+
+  const done  = tasks.filter(t => t.done).length;
+  const total = tasks.length;
+  const allDone = done === total;
+
+  if (dismissed) return null;
+
+  return (
+    <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 16, overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderBottom: collapsed ? 'none' : '1px solid var(--border)' }} onClick={() => setCollapsed(c => !c)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>
+            {allDone ? '🎉 You\'re all set!' : `Get started — ${done}/${total} done`}
+          </div>
+          {/* Progress bar */}
+          <div style={{ width: 100, height: 5, background: 'var(--bg4)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ width: `${(done / total) * 100}%`, height: '100%', background: allDone ? 'var(--green)' : 'var(--accent)', borderRadius: 3, transition: 'width .4s' }} />
+          </div>
+          <span style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--muted)' }}>{Math.round((done / total) * 100)}%</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {allDone && (
+            <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); localStorage.setItem(STORAGE_KEY, 'true'); setDismissed(true); }}>
+              Dismiss
+            </button>
+          )}
+          <span style={{ fontSize: 12, color: 'var(--muted)' }}>{collapsed ? '▾' : '▴'}</span>
+        </div>
+      </div>
+
+      {/* Tasks */}
+      {!collapsed && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
+          {tasks.map((t, i) => (
+            <div key={t.id} style={{ padding: '12px 16px', borderRight: i < 3 ? '1px solid var(--border)' : 'none', opacity: t.done ? 0.6 : 1, transition: 'opacity .2s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                <div style={{ width: 20, height: 20, borderRadius: '50%', background: t.done ? 'var(--green)' : 'var(--bg4)', border: t.done ? 'none' : '1.5px solid var(--border2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0, color: '#fff', transition: 'all .2s' }}>
+                  {t.done ? '✓' : i + 1}
+                </div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: t.done ? 'var(--muted)' : 'var(--text)', textDecoration: t.done ? 'line-through' : 'none' }}>{t.label}</div>
+              </div>
+              <div style={{ fontSize: 11, fontFamily: 'DM Mono', color: 'var(--muted)', paddingLeft: 28 }}>{t.sub}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Uptime bars ───────────────────────────────────────────────────
 function UptimeBars({ monitorId }) {
   const { data } = useQuery({
     queryKey: ['mon-results', monitorId],
@@ -22,6 +88,7 @@ function UptimeBars({ monitorId }) {
   );
 }
 
+// ── Chart modal ───────────────────────────────────────────────────
 function ChartModal({ monitorId, monitorName, onClose }) {
   const { data, isLoading } = useQuery({
     queryKey: ['mon-chart', monitorId],
@@ -101,6 +168,7 @@ function ChartModal({ monitorId, monitorName, onClose }) {
   );
 }
 
+// ── Add monitor modal ─────────────────────────────────────────────
 function AddMonitorModal({ onClose, onSave }) {
   const [f, setF] = useState({ name: '', url: 'https://', method: 'GET', interval_seconds: 60, notify_slack: '' });
   const [err, setErr] = useState('');
@@ -148,6 +216,7 @@ function AddMonitorModal({ onClose, onSave }) {
   );
 }
 
+// ── Main Watch page ───────────────────────────────────────────────
 export default function Watch() {
   const qc      = useQueryClient();
   const canEdit = useCanEdit();
@@ -158,6 +227,15 @@ export default function Watch() {
   const { data: monitors = [], isLoading } = useQuery({ queryKey: ['monitors'],    queryFn: () => api.get('/monitors').then(r => r.data.monitors), refetchInterval: 30_000 });
   const { data: stats }                    = useQuery({ queryKey: ['watch-stats'], queryFn: () => api.get('/monitors/stats').then(r => r.data), refetchInterval: 30_000 });
   const { data: incidents = [] }           = useQuery({ queryKey: ['incidents'],   queryFn: () => api.get('/monitors/incidents').then(r => r.data.incidents) });
+  const { data: logStats }                 = useQuery({ queryKey: ['log-stats'],   queryFn: () => api.get('/logs/stats').then(r => r.data.stats) });
+  const { data: relayStats }               = useQuery({ queryKey: ['relay-stats'], queryFn: () => api.get('/relay/stats').then(r => r.data.stats) });
+  const { data: teamData }                 = useQuery({ queryKey: ['teams'],       queryFn: () => api.get('/teams').then(r => r.data.teams) });
+
+  // Onboarding state
+  const hasLogs  = Number(logStats?.last_24h || 0) > 0 || Number(logStats?.errors_1h || 0) > 0;
+  const hasRelay = Number(relayStats?.channels || 0) > 0;
+  const hasTeam  = (teamData?.[0]?.member_count || '1') !== '1';
+  const onboardingDismissed = typeof window !== 'undefined' && localStorage.getItem('vigil-onboarding-dismissed') === 'true';
 
   const create = useMutation({ mutationFn: d => api.post('/monitors', d),            onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
   const del    = useMutation({ mutationFn: id => api.delete(`/monitors/${id}`),       onSuccess: () => qc.invalidateQueries({ queryKey: ['monitors'] }) });
@@ -180,19 +258,28 @@ export default function Watch() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost btn-sm" onClick={() => qc.invalidateQueries()}>↺ Refresh</button>
-          {canEdit && (
-            <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>+ New monitor</button>
-          )}
+          {canEdit && <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>+ New monitor</button>}
         </div>
       </div>
 
       <div className="page-scroll">
+        {/* Onboarding checklist — only shows if not dismissed */}
+        {!onboardingDismissed && (
+          <OnboardingChecklist
+            monitors={monitors.length}
+            hasLogs={hasLogs}
+            hasRelay={hasRelay}
+            hasTeam={hasTeam}
+          />
+        )}
+
+        {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12, marginBottom: 20 }}>
           {[
             ['Monitors',      stats?.monitors?.total || 0,                        `${stats?.monitors?.up || 0} up · ${stats?.monitors?.down || 0} down`, stats?.monitors?.down > 0 ? 'var(--red)' : 'var(--green)'],
             ['Avg response',  stats?.avg_response_ms ? `${stats.avg_response_ms}ms` : '—', 'across active monitors', 'var(--text)'],
             ['Open incidents',stats?.incidents?.open || 0,                        `${stats?.incidents?.total || 0} in 30 days`, stats?.incidents?.open > 0 ? 'var(--red)' : 'var(--green)'],
-            ['Plan',          'Free',                                              `${monitors.length}/3 monitors`, 'var(--accent)'],
+            ['Plan',          'Free',                                              `${monitors.length}/3 monitors used`, 'var(--accent)'],
           ].map(([label, val, sub, color]) => (
             <div key={label} className="stat">
               <div className="stat-label">{label}</div>
@@ -202,6 +289,7 @@ export default function Watch() {
           ))}
         </div>
 
+        {/* Monitors table */}
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-head">
             <span className="card-title">Monitors</span>
@@ -242,8 +330,6 @@ export default function Watch() {
                   <div style={{ fontFamily: 'DM Mono', fontSize: 10, color: 'var(--muted)' }}>
                     {m.last_checked_at ? new Date(m.last_checked_at).toLocaleTimeString() : 'Never'}
                   </div>
-
-                  {/* Actions — chart always visible, edit actions only for canEdit */}
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     <button className="btn btn-ghost btn-sm" title="Response time chart" onClick={() => setChart({ id: m.id, name: m.name })} style={{ padding: '4px 7px' }}>
                       <svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M2 12l3-4 3 2 3-5 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -259,9 +345,7 @@ export default function Watch() {
                         <button className="btn btn-danger btn-sm" onClick={() => { if (confirm(`Delete "${m.name}"?`)) del.mutate(m.id); }}>Del</button>
                       </>
                     )}
-                    {!canEdit && (
-                      <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>view only</span>
-                    )}
+                    {!canEdit && <span style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>view only</span>}
                   </div>
                 </div>
               ))}
@@ -269,6 +353,7 @@ export default function Watch() {
           )}
         </div>
 
+        {/* Incidents */}
         <div className="card">
           <div className="card-head">
             <span className="card-title">Incidents</span>
