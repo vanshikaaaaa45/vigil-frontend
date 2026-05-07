@@ -190,7 +190,11 @@ function MaintenanceModal({ monitorId, monitorName, onClose }) {
   });
 
   const create = useMutation({
-    mutationFn: () => api.post(`/monitors/${monitorId}/maintenance`, f),
+    mutationFn: () => api.post(`/monitors/${monitorId}/maintenance`, {
+      ...f,
+      starts_at: new Date(f.starts_at).toISOString(),
+      ends_at:   new Date(f.ends_at).toISOString(),
+    }),
     onSuccess:  () => { qc.invalidateQueries({ queryKey: ['maintenance', monitorId] }); qc.invalidateQueries({ queryKey: ['monitors'] }); setErr(''); },
     onError:    e  => setErr(e.response?.data?.error || 'Failed'),
   });
@@ -224,7 +228,7 @@ function MaintenanceModal({ monitorId, monitorName, onClose }) {
                     {isActive(w) && <span style={{ fontSize: 9, fontFamily: 'DM Mono', background: 'rgba(245,158,11,.1)', color: 'var(--amber)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 3, padding: '1px 5px', fontWeight: 700 }}>ACTIVE</span>}
                   </div>
                   <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--muted)' }}>
-                    {new Date(w.starts_at).toLocaleString()} → {new Date(w.ends_at).toLocaleString()}
+                    {new Date(w.starts_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} → {new Date(w.ends_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     {w.repeat_weekly && ' · repeats weekly'}
                   </div>
                 </div>
@@ -271,7 +275,7 @@ function MaintenanceModal({ monitorId, monitorName, onClose }) {
 }
 
 function AddMonitorModal({ onClose, onSave }) {
-  const [f, setF] = useState({ name: '', url: 'https://', method: 'GET', interval_seconds: 60, notify_slack: '', sla_ms: '' });
+  const [f, setF] = useState({ name: '', url: 'https://', method: 'GET', interval_seconds: 60, notify_slack: '', sla_ms: '', assert_text: '' });
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const submit = async (e) => {
@@ -306,6 +310,14 @@ function AddMonitorModal({ onClose, onSave }) {
           <div className="field">
             <label className="label">Slack webhook <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--muted)' }}>(optional)</span></label>
             <input className="input" placeholder="https://hooks.slack.com/services/..." value={f.notify_slack} onChange={e => setF(p => ({ ...p, notify_slack: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label className="label">
+              Response body must contain
+              <span style={{ textTransform: 'none', fontWeight: 400, color: 'var(--muted)', fontSize: 10, marginLeft: 6 }}>optional — marks DOWN if text missing</span>
+            </label>
+            <input className="input" placeholder='e.g. "status":"ok" or "healthy"' value={f.assert_text} onChange={e => setF(p => ({ ...p, assert_text: e.target.value }))} />
+            {f.assert_text && <div style={{ fontSize: 10, fontFamily: 'DM Mono', color: 'var(--blue2)', marginTop: 4 }}>Monitor marks DOWN if response doesn't contain: <strong>{f.assert_text}</strong></div>}
           </div>
           <div className="field">
             <label className="label">
@@ -433,6 +445,7 @@ export default function Watch() {
                     <div className="tsub">
                       {m.url}
                       {m.sla_ms && <span style={{ marginLeft: 8, fontFamily: 'DM Mono', fontSize: 10, color: 'var(--amber)', background: 'rgba(245,158,11,.08)', border: '1px solid rgba(245,158,11,.15)', borderRadius: 3, padding: '1px 5px' }}>SLA {m.sla_ms}ms</span>}
+                      {m.assert_text && <span style={{ marginLeft: 4, fontFamily: 'DM Mono', fontSize: 10, color: 'var(--blue2)', background: 'rgba(99,102,241,.08)', border: '1px solid rgba(99,102,241,.15)', borderRadius: 3, padding: '1px 5px' }}>assert</span>}
                     </div>
                   </div>
                   <div>
